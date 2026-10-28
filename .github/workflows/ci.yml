@@ -4,12 +4,22 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   macos:
-    runs-on: macos-14
+    runs-on: macos-15-intel
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Show Swift version
+        run: swift --version
 
       - name: Check shell scripts
         run: bash -n scripts/build.sh scripts/dmg.sh scripts/release.sh

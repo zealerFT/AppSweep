@@ -20,6 +20,12 @@
 <p align="center"><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg">Download for macOS — v0.1.0 preview</a></strong><br />
+  macOS 13+ · Apple Silicon &amp; Intel · No compilation required<br />
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0">Release notes and checksums</a>
+</p>
+
+<p align="center">
   <a href="#screenshots">Screenshots</a> ·
   <a href="#install-and-first-use">Getting started</a> ·
   <a href="#build-locally">Build from source</a> ·
@@ -67,14 +73,20 @@ These screenshots use an isolated sample application and fictional paths. They c
 
 ## Install and first use
 
-After a release is published, download the `.dmg` from [GitHub Releases](https://github.com/zealerFT/AppSweep/releases), open it, and drag `AppSweep.app` to the Applications folder. Launch it from Applications.
+1. [Download AppSweep-0.1.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
+2. Open the `.dmg` and drag **AppSweep** to **Applications**.
+3. Launch AppSweep from Applications. No Xcode, terminal commands, or compilation are required.
 
-macOS may ask you to confirm the developer or grant file access on first launch. Continue only after verifying that the download came from a trusted source. To scan protected locations in the current user's Library:
+Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0); **Source code (zip/tar.gz)** is for developers.
+
+**First launch:** this preview is ad-hoc signed, without Apple Developer ID signing or notarization. If macOS cannot verify the developer, confirm that you downloaded it from this repository, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. This option normally appears after an attempted launch; managed Macs may prevent it.
+
+To scan protected locations in the current user's Library:
 
 1. Open **Permissions** from the toolbar.
 2. Choose **Open System Settings**.
 3. In **Privacy & Security → Full Disk Access**, add the `AppSweep.app` that you are currently running and enable it.
-4. Return to AppSweep and choose **Rescan now**.
+4. Relaunch AppSweep if macOS requests it, then choose **Rescan now**.
 
 AppSweep does not request administrator privileges. Full Disk Access is managed by macOS and does not remove system protections.
 
@@ -145,11 +157,13 @@ swift run AppSweepSafetyChecks
 
 ## Distribution outside the App Store
 
-A public download outside the App Store still needs Developer ID Application signing and notarization. The distributor must provide an Apple Developer Program account, a Developer ID certificate, a stable reverse-DNS Bundle ID, and a `notarytool` keychain profile.
+The downloadable preview is built by [GitHub Actions](.github/workflows/release.yml) from a matching `vX.Y.Z` tag. The workflow checks `VERSION`, runs the safety checks, builds both architectures, verifies the app and disk image, and publishes a **prerelease** with `SHA256SUMS.txt` and `build-info.json`. The latter records the source commit, which is also embedded in the app's `Info.plist`. Published installers use `io.github.zealerft.AppSweep` as their Bundle ID. A new version needs a matching `docs/releases/vX.Y.Z.md` and updated download links before tagging.
+
+For a release with a verified developer identity and notarization, the distributor must provide an Apple Developer Program account, a Developer ID certificate, and a `notarytool` keychain profile. The signed release script remains separate from the preview workflow:
 
 ```bash
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Organization (TEAMID)'
-export APP_BUNDLE_ID='com.yourcompany.AppSweep'
+export APP_BUNDLE_ID='io.github.zealerft.AppSweep'
 export NOTARY_PROFILE='your-keychain-profile-name'
 export APP_VERSION='0.1.0'
 bash scripts/release.sh

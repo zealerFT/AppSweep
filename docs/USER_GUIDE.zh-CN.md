@@ -12,10 +12,12 @@
 
 ## 安装应用
 
-1. 从项目的 GitHub Releases 下载 `.dmg`。
+1. [下载 AppSweep-0.1.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg)，要求 macOS 13 或更高版本，同一安装包包含 Apple Silicon 和 Intel 两种架构。
 2. 双击打开磁盘映像，把 `AppSweep.app` 拖到“应用程序”文件夹。
 3. 从“应用程序”文件夹打开 AppSweep。
-4. 如果 macOS 显示来源或开发者确认，请先确认文件来自可信的发布者，再点击“打开”。
+4. 此预发布版尚未经过 Apple Developer ID 签名和公证。如果 macOS 提示无法验证开发者，请先确认下载来自本仓库，再打开“系统设置 → 隐私与安全性 → 仍要打开”，并确认“打开”。该按钮通常在尝试启动后才会出现；受组织管理的 Mac 可能不允许打开。
+
+无需下载源码或自行编译。在 [版本下载页面](https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0) 选择 `.dmg` 文件即可，`Source code (zip/tar.gz)` 是给开发者使用的源码。
 
 ## 授予完全磁盘访问权限
 
@@ -25,7 +27,7 @@ AppSweep 只在需要读取当前用户 Library 中受保护的目录时需要�
 2. 点击“打开系统设置”。
 3. 打开“隐私与安全性 → 完全磁盘访问权限”。
 4. 将 AppSweep 加入允许列表并打开开关。
-5. 回到 AppSweep，点击“立即重新扫描”。
+5. 如果 macOS 要求重新打开应用，请按提示操作，然后在 AppSweep 点击“立即重新扫描”。
 
 AppSweep 不会自动提权，也不会修改 SIP、Gatekeeper 或 macOS 的隐私设置。完全磁盘访问权限不等于管理员权限。
 

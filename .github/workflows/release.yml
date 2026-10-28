@@ -1,0 +1,126 @@
+name: Publish downloadable prerelease
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      ARCHS: arm64 x86_64
+      CONFIGURATION: release
+      APP_BUNDLE_ID: io.github.zealerft.AppSweep
+      APP_SOURCE_COMMIT: ${{ github.sha }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      OUT_DIR: ${{ github.workspace }}/dist/prerelease
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Verify version and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(cat VERSION)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_TAG" == "v$version" ]]
+          [[ "$(git rev-parse HEAD)" == "$APP_SOURCE_COMMIT" ]]
+          [[ -z "$(git status --porcelain)" ]]
+          test -f "docs/releases/$RELEASE_TAG.md"
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "DMG_NAME=AppSweep-$version-universal.dmg" >> "$GITHUB_ENV"
+          swift --version
+          bash -n scripts/build.sh scripts/dmg.sh scripts/release.sh
+
+      - name: Run core safety checks
+        run: swift run AppSweepSafetyChecks
+
+      - name: Build the universal application
+        run: bash scripts/build.sh
+
+      - name: Verify application and create disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$OUT_DIR/AppSweep.app"
+          xcrun lipo "$app/Contents/MacOS/AppSweep" -verify_arch arm64 x86_64
+          codesign --verify --deep --strict --verbose=2 "$app"
+          test -d "$app/Contents/Resources/AppSweep_AppSweep.bundle/en.lproj"
+          test -d "$app/Contents/Resources/AppSweep_AppSweep.bundle/zh-Hans.lproj"
+          bash scripts/dmg.sh
+          hdiutil verify "$OUT_DIR/$DMG_NAME"
+
+      - name: Record source and checksums
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import plistlib
+          import subprocess
+
+          out = pathlib.Path(os.environ['OUT_DIR'])
+          with (out / 'AppSweep.app/Contents/Info.plist').open('rb') as source:
+              info = plistlib.load(source)
+          assert info['CFBundleShortVersionString'] == os.environ['APP_VERSION']
+          assert info['CFBundleIdentifier'] == os.environ['APP_BUNDLE_ID']
+          assert info['AppSweepSourceCommit'] == os.environ['APP_SOURCE_COMMIT']
+          dmg = out / os.environ['DMG_NAME']
+          sha256 = hashlib.sha256(dmg.read_bytes()).hexdigest()
+          metadata = {
+              'version': info['CFBundleShortVersionString'],
+              'build_number': info['CFBundleVersion'],
+              'tag': os.environ['RELEASE_TAG'],
+              'source_commit': info['AppSweepSourceCommit'],
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'workflow_run': f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              'bundle_identifier': info['CFBundleIdentifier'],
+              'architectures': ['arm64', 'x86_64'],
+              'minimum_macos': info['LSMinimumSystemVersion'],
+              'signature': 'ad-hoc',
+              'notarized': False,
+              'swift': subprocess.check_output(['swift', '--version'], text=True).strip(),
+              'installer': dmg.name,
+              'sha256': sha256,
+          }
+          metadata_file = out / 'build-info.json'
+          metadata_file.write_text(json.dumps(metadata, indent=2) + '\n')
+          metadata_sha256 = hashlib.sha256(metadata_file.read_bytes()).hexdigest()
+          (out / 'SHA256SUMS.txt').write_text(
+              f'{sha256}  {dmg.name}\n{metadata_sha256}  {metadata_file.name}\n'
+          )
+          PY
+
+      - name: Upload installers and publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes="$RUNNER_TEMP/release-notes.md"
+          cp "docs/releases/$RELEASE_TAG.md" "$notes"
+          printf '\nSource / 源码: [%s](https://github.com/%s/commit/%s)\n' \
+            "$APP_SOURCE_COMMIT" "$GITHUB_REPOSITORY" "$APP_SOURCE_COMMIT" >> "$notes"
+          gh release create "$RELEASE_TAG" \
+            "$OUT_DIR/$DMG_NAME" "$OUT_DIR/SHA256SUMS.txt" "$OUT_DIR/build-info.json" \
+            --verify-tag --draft --prerelease --latest=false \
+            --title "AppSweep $APP_VERSION · Preview / 预发布版" --notes-file "$notes"
+          [[ "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" == 3 ]]
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false

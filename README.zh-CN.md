@@ -20,6 +20,12 @@
 <p align="center"><a href="README.md">English</a> · <strong>简体中文</strong></p>
 
 <p align="center">
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg">下载 macOS 安装包 — v0.1.0 预发布版</a></strong><br />
+  macOS 13 及以上 · Apple Silicon 与 Intel 通用 · 无需编译<br />
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0">更新说明与校验文件</a>
+</p>
+
+<p align="center">
   <a href="#界面预览">界面预览</a> ·
   <a href="#安装和首次使用">开始使用</a> ·
   <a href="#本地构建">源码构建</a> ·
@@ -68,9 +74,15 @@ AppSweep 是一款原生 macOS 应用清理工具。它按应用的 Bundle ID �
 
 ## 安装和首次使用
 
-正式发布后，从 GitHub Releases 下载 `.dmg`，将 `AppSweep.app` 拖到“应用程序”文件夹，再从“应用程序”中打开。
+1. [下载 AppSweep-0.1.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg)。一个安装包包含 Apple Silicon 和 Intel 两种架构，要求 macOS 13 或更高版本。
+2. 双击打开 `.dmg`，将 **AppSweep** 拖到 **Applications（应用程序）**。
+3. 从“应用程序”文件夹打开 AppSweep，无需安装 Xcode、运行命令或自行编译。
 
-首次打开时，macOS 可能显示开发者身份或文件访问权限提示。请只在确认下载来源可信时继续。需要扫描当前用户 Library 中受保护的目录时，在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中允许 AppSweep，然后回到应用点击“立即重新扫描”。
+在 [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0) 页面选择 `.dmg` 即可；**Source code (zip/tar.gz)** 是给开发者使用的源码。
+
+**首次打开提示：** 此预发布版使用 ad-hoc 签名，尚未经过 Apple Developer ID 签名和公证。如果 macOS 提示无法验证开发者，请先确认文件来自本仓库，再打开 **系统设置 → 隐私与安全性 → 仍要打开**，并确认“打开”。该按钮通常在尝试启动后才会出现；受组织管理的 Mac 可能不允许打开。
+
+需要扫描当前用户 Library 中受保护的目录时，在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中允许 AppSweep。按 macOS 提示重新打开应用后，再点击“立即重新扫描”。
 
 普通清理流程如下：
 
@@ -139,11 +151,13 @@ swift run AppSweepSafetyChecks
 
 ## 正式分发
 
-不上 App Store 也需要为公开分发准备 Developer ID Application 签名和公证。正式发布者需要自己的 Apple Developer Program 账号、Developer ID 证书、稳定的反向域名 Bundle ID 和 `notarytool` 钥匙串 profile。
+当前可下载的预发布版由 [GitHub Actions](.github/workflows/release.yml) 从对应的 `vX.Y.Z` 标签构建。流程会核对 `VERSION`、运行安全检查、构建两种架构、验证应用和磁盘映像，再发布为 **Pre-release**，附上 `SHA256SUMS.txt` 和 `build-info.json`。后者记录源码提交，应用的 `Info.plist` 中也保存该提交。公开安装包统一使用 `io.github.zealerft.AppSweep` 作为 Bundle ID。以后发布新版本时，先准备对应的 `docs/releases/vX.Y.Z.md` 并更新下载链接，再打标签。
+
+如需可验证开发者身份、经过公证的正式版本，发布者需要自己的 Apple Developer Program 账号、Developer ID 证书和 `notarytool` 钥匙串 profile。正式签名脚本与预发布流程分开：
 
 ```bash
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Organization (TEAMID)'
-export APP_BUNDLE_ID='com.yourcompany.AppSweep'
+export APP_BUNDLE_ID='io.github.zealerft.AppSweep'
 export NOTARY_PROFILE='your-keychain-profile-name'
 export APP_VERSION='0.1.0'
 bash scripts/release.sh
