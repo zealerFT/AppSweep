@@ -1,14 +1,36 @@
-# AppSweep
+<p align="center">
+  <img src="docs/assets/app-icon.png" width="128" height="128" alt="AppSweep app icon" />
+</p>
 
-[简体中文 README](README.zh-CN.md)
+<h1 align="center">AppSweep</h1>
+
+<p align="center"><strong>Uninstall apps. Review what they leave behind.</strong></p>
+
+<p align="center">
+  <a href="#build-locally"><img src="docs/assets/badges/macos.svg" alt="Requires macOS 13 or later" /></a>
+  <a href="#build-locally"><img src="docs/assets/badges/architectures.svg" alt="Build targets: arm64 and x86_64" /></a>
+  <a href="Package.swift"><img src="docs/assets/badges/interface.svg" alt="Native SwiftUI and AppKit interface" /></a>
+  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="Version 0.1.0 prerelease" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml"><img src="https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml/badge.svg" alt="Build and safety checks" /></a>
+</p>
+
+<p align="center"><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#install-and-first-use">Getting started</a> ·
+  <a href="#build-locally">Build from source</a> ·
+  <a href="PRIVACY.md">Privacy</a>
+</p>
 
 AppSweep is a native macOS application cleanup utility. It finds associated caches, logs, preferences, saved state, application support data, containers, and web data by Bundle ID, then moves the items you approve to the macOS Trash.
 
-[![Build and safety checks](https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml/badge.svg)](https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml)
+Built with **SwiftUI and AppKit**, with no third-party package dependencies. AppSweep works **offline**, with Chinese and English interfaces.
 
 The current version is **0.1.0 prerelease**. It is intended for testing and feedback. It has not yet been validated as a final release on every supported macOS version, Intel Mac, or clean system configuration.
-
-GitHub shows `README.md` as the repository landing page and does not switch README files automatically by visitor location. The Chinese version is available in [README.zh-CN.md](README.zh-CN.md).
 
 ## Screenshots
 
@@ -94,6 +116,8 @@ AppSweep runs locally. It has no account system, analytics, advertising, network
 
 Requirements: macOS 13 or later, Swift 6, and Xcode Command Line Tools.
 
+The build script can target Apple Silicon (`arm64`) and Intel (`x86_64`). Intel runtime testing is still pending; the build targets badge describes packaging capability.
+
 ```bash
 git clone https://github.com/zealerFT/AppSweep.git
 cd AppSweep
@@ -147,4 +171,4 @@ VERSION                      default build and release version
 
 ## License
 
-No license has been selected yet. Add an appropriate license file and copyright attribution before distributing the repository. Do not copy third-party icons, artwork, or code without permission.
+An open-source license has not been selected for this repository yet.

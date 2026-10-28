@@ -1,14 +1,37 @@
-# AppSweep
+<p align="center">
+  <img src="docs/assets/app-icon.png" width="128" height="128" alt="AppSweep 应用图标" />
+</p>
 
-[English README](README.md)
+<h1 align="center">AppSweep</h1>
+
+<p align="center"><strong>卸载应用，也看清它留下的文件。</strong></p>
+
+<p align="center">
+  <a href="#本地构建"><img src="docs/assets/badges/macos.svg" alt="需要 macOS 13 或更高版本" /></a>
+  <a href="#本地构建"><img src="docs/assets/badges/architectures.svg" alt="支持构建 arm64 和 x86_64" /></a>
+  <a href="Package.swift"><img src="docs/assets/badges/interface.svg" alt="原生 SwiftUI 和 AppKit 界面" /></a>
+  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="版本 0.1.0 预发布版" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml"><img src="https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml/badge.svg" alt="构建与安全检查" /></a>
+</p>
+
+<p align="center"><a href="README.md">English</a> · <strong>简体中文</strong></p>
+
+<p align="center">
+  <a href="#界面预览">界面预览</a> ·
+  <a href="#安装和首次使用">开始使用</a> ·
+  <a href="#本地构建">源码构建</a> ·
+  <a href="docs/USER_GUIDE.zh-CN.md">操作手册</a> ·
+  <a href="PRIVACY.md">隐私说明</a>
+</p>
 
 AppSweep 是一款原生 macOS 应用清理工具。它按应用的 Bundle ID 查找关联的缓存、日志、偏好设置、保存状态、应用支持目录、容器和网页数据，并把用户确认的项目移到 macOS 废纸篓。
 
-[![Build and safety checks](https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml/badge.svg)](https://github.com/zealerFT/AppSweep/actions/workflows/ci.yml)
+采用 **SwiftUI 和 AppKit** 开发，无第三方包依赖。应用**离线运行**，提供中文和英文界面。
 
 当前版本是 **0.1.0 预发布版**。它适合测试和反馈，尚未代表已经完成所有 macOS 版本、Intel 设备和干净系统环境验收的正式发行版。
-
-GitHub 默认展示 `README.md`，不会根据访问者所在地区自动切换语言。中文说明保存在本页，英文读者可以返回 [English README](README.md)。
 
 ## 界面预览
 
@@ -87,6 +110,8 @@ AppSweep 在本机运行，没有账号、分析、广告、网络客户端、�
 
 要求：macOS 13 或更高版本、Swift 6 工具链和 Xcode Command Line Tools。
 
+构建脚本支持 Apple Silicon（`arm64`）和 Intel（`x86_64`）。Intel 真机运行验证仍待完成，页头的架构徽章表示构建能力。
+
 ```bash
 git clone https://github.com/zealerFT/AppSweep.git
 cd AppSweep
@@ -140,4 +165,4 @@ VERSION                      构建和发布的默认版本号
 
 ## 许可证
 
-许可证尚未由项目所有者确定。公开仓库前请补充合适的许可证文件和版权归属；不要在没有授权的情况下复制第三方应用图标、素材或代码。
+本仓库暂未指定开源许可证。
