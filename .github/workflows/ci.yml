@@ -1,0 +1,21 @@
+name: Build and safety checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check shell scripts
+        run: bash -n scripts/build.sh scripts/dmg.sh scripts/release.sh
+
+      - name: Run core safety checks
+        run: swift run AppSweepSafetyChecks
+
+      - name: Build application
+        run: swift build --product AppSweep
