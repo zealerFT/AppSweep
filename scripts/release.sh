@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export ARCHS="arm64 x86_64"
 export CONFIGURATION=release
 export OUT_DIR="${OUT_DIR:-$ROOT/dist/release}"
-export APP_VERSION="${APP_VERSION:-0.1.0}"
+export APP_VERSION="${APP_VERSION:-$(cat "$ROOT/VERSION")}"
 export DMG_NAME="AppSweep-$APP_VERSION-universal.dmg"
 bash "$ROOT/scripts/build.sh"
 bash "$ROOT/scripts/dmg.sh"

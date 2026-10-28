@@ -29,7 +29,7 @@ removed by each script's EXIT trap.
 | Variable | Requirement | Secret? |
 | --- | --- | --- |
 | APP_BUNDLE_ID | User-owned stable reverse-DNS identifier | No |
-| APP_VERSION / BUILD_NUMBER | Release version/build | No |
+| APP_VERSION / BUILD_NUMBER | Optional override; defaults to VERSION / 1 | No |
 | DEVELOPER_ID_APPLICATION | Installed Developer ID identity name | No; associated private key remains in Keychain |
 | NOTARY_PROFILE | Existing notarytool Keychain profile name | No; credentials remain in Keychain |
 | OUT_DIR | Optional generated output directory | No |

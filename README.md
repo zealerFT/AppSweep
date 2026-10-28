@@ -67,7 +67,7 @@ open dist/AppSweep.app
 bash scripts/dmg.sh
 ```
 
-`scripts/build.sh` 默认生成当前架构的本地测试包，使用 ad-hoc 签名，未公证。构建产物位于 `dist/`，不会被提交到 Git，因为 `.gitignore` 已排除 `.build/`、`build/` 和 `dist/`。
+`scripts/build.sh` 默认读取仓库根目录的 `VERSION`，生成当前架构的本地测试包，使用 ad-hoc 签名，未公证。构建产物位于 `dist/`，不会被提交到 Git，因为 `.gitignore` 已排除 `.build/`、`build/` 和 `dist/`。
 
 运行隔离 UI QA：
 
@@ -95,7 +95,7 @@ export APP_VERSION='0.1.0'
 bash scripts/release.sh
 ```
 
-正式发布前还要在 Apple Silicon、Intel 和最低支持的 macOS 版本上测试，并在干净系统上验证 Gatekeeper、权限持久性和卸载流程。不要把未经公证的本地测试包当作正式安装包。
+正式发布前还要在 Apple Silicon、Intel 和最低支持的 macOS 版本上测试，并在干净系统上验证 Gatekeeper、权限持久性和卸载流程。更新 `VERSION` 后提交并创建同名的 `vX.Y.Z` Git tag，再从该 tag 构建正式包。不要把未经公证的本地测试包当作正式安装包。
 
 ## 项目结构
 
@@ -106,6 +106,7 @@ Tests/AppSweepCoreTests/     隔离的核心安全检查
 docs/                        操作手册和开发维护文档
 packaging/                   App Bundle 的基础 Info.plist
 scripts/                     构建、DMG、图标和正式发布脚本
+VERSION                      构建和发布的默认版本号
 ```
 
 ## 许可证

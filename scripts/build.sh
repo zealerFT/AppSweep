@@ -6,7 +6,7 @@ CONFIGURATION="${CONFIGURATION:-release}"
 ARCHS="${ARCHS:-$(uname -m)}"
 OUT_DIR="${OUT_DIR:-$ROOT/dist}"
 APP_BUNDLE_ID="${APP_BUNDLE_ID:-com.example.AppSweep}"
-APP_VERSION="${APP_VERSION:-0.1.0}"
+APP_VERSION="${APP_VERSION:-$(cat "$ROOT/VERSION")}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 
 [[ "$CONFIGURATION" == debug || "$CONFIGURATION" == release ]] || { printf 'Invalid configuration\n' >&2; exit 1; }
