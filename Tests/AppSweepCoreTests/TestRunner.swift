@@ -55,6 +55,9 @@ enum SafetyChecks {
     static func main() async {
         let suite = AppSweepCoreTests()
         let tests: [(String, @Sendable () async throws -> Void)] = [
+            ("size and last-use ordering", { try suite.testCatalogSortingUsesNumericSizesAndRealDatesWithUnknownsLast() }),
+            ("app-only metadata and symlink boundaries", { try suite.testCatalogMetadataMeasuresOnlyTheAppAndDoesNotFollowLinks() }),
+            ("stale catalog metadata refusal", { try suite.testCatalogMetadataRejectsAReplacedApplication() }),
             ("catalog boundaries", { try suite.testCatalogIncludesNestedAppsButNotTheirHelpersOrSymlinks() }),
             ("invalid app packages are informational", { try suite.testInvalidApplicationPackagesAreInformational() }),
             ("exact bundle ID matches", { try suite.testOnlyExactBundleIDPathsAreCandidates() }),

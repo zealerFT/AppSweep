@@ -9,6 +9,7 @@ import SwiftUI
 enum QASmoke {
     private static var fixture: URL?
     private static var output: URL?
+    private static var preferencesName: String?
     private static var ran = false
 
     static func makeModel() -> AppModel? {
@@ -24,16 +25,18 @@ enum QASmoke {
             output = URL(fileURLWithPath: CommandLine.arguments[index + 1])
             let home = root.appendingPathComponent("home")
             let apps = root.appendingPathComponent("Applications")
-            for (name, identifier) in [("Draft Notes", "org.example.DraftNotes"),
+            for (index, (name, identifier)) in [("Draft Notes", "org.example.DraftNotes"),
                                        ("Pixel Editor", "org.example.PixelEditor"),
                                        ("Studio Player", "org.example.StudioPlayer"),
-                                       ("Code Studio", "org.example.CodeStudio")] {
+                                       ("Code Studio", "org.example.CodeStudio")].enumerated() {
                 let contents = apps.appendingPathComponent(name + ".app/Contents")
                 try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
                 let info = ["CFBundleIdentifier": identifier, "CFBundleName": name,
                             "CFBundleVersion": "42", "CFBundleShortVersionString": "2.4.1", "CFBundlePackageType": "APPL"]
                 try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
                     .write(to: contents.appendingPathComponent("Info.plist"))
+                try Data(repeating: 65, count: (index + 1) * 16_384)
+                    .write(to: contents.appendingPathComponent("sample-payload"))
             }
             for (path, bytes) in [
                 ("Caches/org.example.DraftNotes/cache", 524_288),
@@ -50,8 +53,11 @@ enum QASmoke {
                 try Data(repeating: 65, count: bytes).write(to: url)
             }
             let context = ScanContext(home: home, applicationRoots: [apps], serviceRoots: [])
+            let suite = "AppSweep.QA." + UUID().uuidString
+            preferencesName = suite
+            guard let preferences = UserDefaults(suiteName: suite) else { throw QAError.failed("No QA defaults") }
             return AppModel(context: context, historyURL: root.appendingPathComponent("history.json"),
-                            trash: QAStagingTrash(root: root.appendingPathComponent("Trash")))
+                            trash: QAStagingTrash(root: root.appendingPathComponent("Trash")), preferences: preferences)
         } catch {
             print("QA fixture failed: \(error)")
             exit(1)
@@ -61,6 +67,9 @@ enum QASmoke {
     static func run(model: AppModel) async {
         guard let fixture, let output, !ran else { return }
         ran = true
+        defer {
+            if let preferencesName { UserDefaults.standard.removePersistentDomain(forName: preferencesName) }
+        }
         var checks: [String] = []
         var screenshots: [String] = []
         do {
@@ -74,6 +83,12 @@ enum QASmoke {
             try require(AppResources.bundle.bundleURL.path.hasPrefix(Bundle.main.bundleURL.path + "/Contents/Resources/"),
                         "localizations load from packaged resources, not the build directory", into: &checks)
             try require(model.apps.count == 4, "catalog loads four isolated applications", into: &checks)
+            try require(model.showsCompletionDialog, "success dialogs are enabled by default", into: &checks)
+            await waitForMetadata(model)
+            try require(!model.isLoadingMetadata && model.appMetadata.count == 4,
+                        "background catalog metadata finishes for every application", into: &checks)
+            model.sortOrder = .largest
+            try require(model.filteredApps.first?.name == "Code Studio", "size sort uses measured app bundles", into: &checks)
             model.query = "Pixel"
             try require(model.filteredApps.count == 1, "search filters applications", into: &checks)
             model.query = ""
@@ -86,6 +101,19 @@ enum QASmoke {
             try require(model.report?.candidates.count == 9, "scan displays all nine exact matches", into: &checks)
             let firstScanDate = model.report?.scannedAt
             await model.reload()
+            // A second refresh cancels old metadata work rather than leaving stale rows.
+            await model.reload()
+            await waitForMetadata(model)
+            try require(Set(model.appMetadata.keys) == Set(model.apps.map(\.id)),
+                        "refresh replaces metadata without stale entries", into: &checks)
+            // Controlled dates represent documented fictional app use in the layout fixtures.
+            for (index, app) in model.apps.enumerated() {
+                let date = app.name == "Code Studio" ? nil : Date().addingTimeInterval(-Double((index + 1) * 30 * 86_400))
+                model.appMetadata[app.id] = ApplicationMetadata(size: model.appMetadata[app.id]?.size, lastUsed: date)
+            }
+            model.sortOrder = .leastRecentlyUsed
+            try require(model.filteredApps.last?.name == "Code Studio",
+                        "apps without usage records stay below dated applications", into: &checks)
             for _ in 0..<100 {
                 if !model.isScanning { break }
                 try await Task.sleep(for: .milliseconds(100))
@@ -135,11 +163,56 @@ enum QASmoke {
             try await pause()
             if let resultSheet = window.attachedSheet, let record = model.result {
                 try require(resultSheet.isVisible, "native result sheet is visible", into: &checks)
-                try render(ResultView(record: record, viewHistory: {}), size: NSSize(width: 460, height: 300),
+                try render(ResultView(record: record, suppressSuccessDialog: .constant(false), close: {}, viewHistory: {}),
+                           size: NSSize(width: 460, height: 380),
                            to: output, name: "result.png", names: &screenshots)
             }
-            model.result = nil
-            model.section = .history
+            model.showsCompletionDialog = false
+            model.dismissResult()
+            try await pause()
+            try require(model.result == nil && model.section == .applications && window.attachedSheet == nil,
+                        "closing the result sheet stays in the application list", into: &checks)
+            guard let preferencesName, let savedPreferences = UserDefaults(suiteName: preferencesName) else {
+                throw QAError.failed("QA preference suite missing")
+            }
+            let reopened = AppModel(context: model.context, historyURL: fixture.appendingPathComponent("history.json"),
+                                    trash: QAStagingTrash(root: fixture.appendingPathComponent("Trash")), preferences: savedPreferences)
+            try require(!reopened.showsCompletionDialog && reopened.sortOrder == .leastRecentlyUsed,
+                        "dialog and sort preferences survive model recreation", into: &checks)
+            guard let nextApp = model.apps.first(where: { $0.name == "Pixel Editor" }) else {
+                throw QAError.failed("Second cleanup fixture missing")
+            }
+            model.select(nextApp.id)
+            for _ in 0..<100 {
+                if !model.isScanning { break }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            await model.removeSelection()
+            try await pause()
+            try require(model.result == nil && window.attachedSheet == nil && model.completionNotice != nil,
+                        "suppressed success uses a non-modal notice", into: &checks)
+            try require(model.history.count == 2 && model.history.first?.succeeded == true,
+                        "suppressed success still saves complete operation history", into: &checks)
+            guard var failed = model.history.first else { throw QAError.failed("Missing second result") }
+            failed.entries[0].status = .failed
+            model.presentResult(failed)
+            try await pause()
+            try require(model.result?.succeeded == false && window.attachedSheet != nil,
+                        "failed cleanup still displays a result when success prompts are disabled", into: &checks)
+            model.dismissResult()
+            try await pause()
+            var journalFailure = model.history[0]
+            journalFailure.journalError = "Isolated QA journal failure"
+            model.presentResult(journalFailure)
+            try require(model.result?.journalError != nil, "journal failures cannot be suppressed", into: &checks)
+            model.dismissResult()
+            try await pause()
+            model.showsCompletionDialog = true
+            model.presentResult(model.history[0])
+            try require(model.result?.succeeded == true, "turning success prompts back on restores the dialog", into: &checks)
+            model.viewResultHistory()
+            try require(model.result == nil && model.section == .history,
+                        "history opens only when explicitly requested", into: &checks)
             try await pause()
             try capture(window, to: output, name: "history.png", names: &screenshots)
             let result = QAReport(checks: checks, screenshots: screenshots, failure: nil)
@@ -157,6 +230,13 @@ enum QASmoke {
     }
 
     private static func pause() async throws { try await Task.sleep(for: .milliseconds(650)) }
+
+    private static func waitForMetadata(_ model: AppModel) async {
+        for _ in 0..<100 {
+            if !model.isLoadingMetadata { return }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
 
     private static func require(_ condition: Bool, _ description: String, into checks: inout [String]) throws {
         guard condition else { throw QAError.failed(description) }

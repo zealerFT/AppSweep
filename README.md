@@ -10,7 +10,7 @@
   <a href="#build-locally"><img src="docs/assets/badges/macos.svg" alt="Requires macOS 13 or later" /></a>
   <a href="#build-locally"><img src="docs/assets/badges/architectures.svg" alt="Build targets: arm64 and x86_64" /></a>
   <a href="Package.swift"><img src="docs/assets/badges/interface.svg" alt="Native SwiftUI and AppKit interface" /></a>
-  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="Version 0.1.0 prerelease" /></a>
+  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="Version 0.2.0 prerelease" /></a>
 </p>
 
 <p align="center">
@@ -20,9 +20,9 @@
 <p align="center"><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
-  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg">Download for macOS — v0.1.0 preview</a></strong><br />
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg">Download for macOS — v0.2.0 preview</a></strong><br />
   macOS 13+ · Apple Silicon &amp; Intel · No compilation required<br />
-  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0">Release notes and checksums</a>
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0">Release notes and checksums</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@ AppSweep is a native macOS application cleanup utility. It finds associated cach
 
 Built with **SwiftUI and AppKit**, with no third-party package dependencies. AppSweep works **offline**, with Chinese and English interfaces.
 
-The current version is **0.1.0 prerelease**. It is intended for testing and feedback. It has not yet been validated as a final release on every supported macOS version, Intel Mac, or clean system configuration.
+The current version is **0.2.0 prerelease**. It is intended for testing and feedback. It has not yet been validated as a final release on every supported macOS version, Intel Mac, or clean system configuration.
 
 ## Screenshots
 
@@ -64,20 +64,22 @@ These screenshots use an isolated sample application and fictional paths. They c
 ## Features
 
 - Scans applications in `/Applications` and `~/Applications`, with search, sorting, and drag and drop support.
+- Sorts by app size (largest or smallest first) and last use (oldest or newest first), and remembers the selected order. The list shows app-bundle disk usage and macOS last-use records; unknown values stay at the end.
 - Matches associated files by an exact Bundle ID instead of guessing from the display name.
 - Selects the application bundle, caches, and logs by default. Preferences, containers, and personal data require an explicit selection.
 - Rechecks application state, file ownership, and file identity before moving anything.
 - Moves approved items to the macOS Trash rather than deleting them permanently. The operation history records their original and Trash locations.
+- Lets you close the cleanup result without opening history. Select **Don't show this again after successful cleanup** to remember that choice; use the toolbar's **Options** menu to restore dialogs. Failures still appear, and history is saved either way.
 - Provides Chinese and English UI with support for the system dark appearance.
 - Explains permission scope through macOS System Settings. It does not elevate privileges or change SIP, Gatekeeper, or TCC settings.
 
 ## Install and first use
 
-1. [Download AppSweep-0.1.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.1.0/AppSweep-0.1.0-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
+1. [Download AppSweep-0.2.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
 2. Open the `.dmg` and drag **AppSweep** to **Applications**.
 3. Launch AppSweep from Applications. No Xcode, terminal commands, or compilation are required.
 
-Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.1.0); **Source code (zip/tar.gz)** is for developers.
+Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0); **Source code (zip/tar.gz)** is for developers.
 
 **First launch:** this preview is ad-hoc signed, without Apple Developer ID signing or notarization. If macOS cannot verify the developer, confirm that you downloaded it from this repository, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. This option normally appears after an attempted launch; managed Macs may prevent it.
 
@@ -165,7 +167,7 @@ For a release with a verified developer identity and notarization, the distribut
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Organization (TEAMID)'
 export APP_BUNDLE_ID='io.github.zealerft.AppSweep'
 export NOTARY_PROFILE='your-keychain-profile-name'
-export APP_VERSION='0.1.0'
+export APP_VERSION='0.2.0'
 bash scripts/release.sh
 ```
 

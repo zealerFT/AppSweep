@@ -1,6 +1,6 @@
 # Privacy
 
-AppSweep 0.1.0 runs locally. It has no analytics, account system, advertising,
+AppSweep 0.2.0 runs locally. It has no analytics, account system, advertising,
 network client, cloud storage, remote diagnostics, or automatic update service.
 
 The application reads installed application metadata and icons, the current
@@ -8,6 +8,11 @@ user's supported Library locations, and launch-job metadata to identify
 unsupported uninstall scenarios. It inspects file attributes to estimate size;
 it does not upload file contents. Only explicitly selected files may be moved
 to the system Trash after confirmation.
+
+The application reads macOS Spotlight last-use dates to sort the application
+list. Missing dates remain unknown; it does not track browsing activity or record
+application launches. Sort order and the successful-cleanup dialog preference
+are saved locally in UserDefaults. Neither is sent to a server.
 
 Operation history contains application names and identifiers, timestamps,
 original paths, resulting Trash paths and errors. It is retained on the current

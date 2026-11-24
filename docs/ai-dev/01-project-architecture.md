@@ -1,6 +1,6 @@
 # Project Architecture
 
-Updated: 2026-09-11. New, independent macOS desktop application.
+Updated: 2026-11-24. Native macOS desktop application.
 
 ## Boundaries
 
@@ -36,6 +36,13 @@ remaining moves. Partial results stay visible.
 
 One main-actor observable UI model; background scan tasks and a serialized removal
 actor. Local JSON history under ~/Library/Application Support/<bundle-id>/.
+Catalog size and last-use metadata load separately from the safety scan, with
+bounded background concurrency and cancellation on refresh. Sizes cover the app
+bundle only; last-use dates come from macOS Spotlight, with missing values kept
+unknown. These display/sort values never authorize a removal.
+Sorting and the successful-cleanup dialog preference use local UserDefaults.
+Suppressing success dialogs does not suppress partial failures or journal errors.
+QA uses an isolated defaults suite and fixture-only Trash.
 No analytics, backend, cloud sync, auto-update, or privileged helper in this version.
 
 Evidence: Package.swift, Sources/ and the selected standalone-distribution

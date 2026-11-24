@@ -3,6 +3,60 @@ import Darwin
 import AppSweepCore
 
 final class AppSweepCoreTests: @unchecked Sendable {
+    func testCatalogSortingUsesNumericSizesAndRealDatesWithUnknownsLast() throws {
+        let f = try Fixture(); defer { f.clean() }
+        let small = try f.app("Small", identifier: "org.example.Small")
+        let large = try f.app("Large", identifier: "org.example.Large")
+        let unknown = try f.app("A no record", identifier: "org.example.Unknown")
+        let empty = try f.app("Empty", identifier: "org.example.Empty")
+        let apps = [unknown, large, empty, small]
+        let metadata = [
+            small.id: ApplicationMetadata(size: SizeEstimate(bytes: 900_000), lastUsed: Date(timeIntervalSince1970: 100)),
+            large.id: ApplicationMetadata(size: SizeEstimate(bytes: 2_000_000_000), lastUsed: Date(timeIntervalSince1970: 1_000)),
+            empty.id: ApplicationMetadata(size: SizeEstimate(bytes: 0)),
+        ]
+        expectEqual(ApplicationSortOrder.largest.sorted(apps, metadata: metadata).map(\.id),
+                    [large.id, small.id, empty.id, unknown.id])
+        expectEqual(ApplicationSortOrder.smallest.sorted(apps, metadata: metadata).map(\.id),
+                    [empty.id, small.id, large.id, unknown.id])
+        expectEqual(ApplicationSortOrder.leastRecentlyUsed.sorted(apps, metadata: metadata).map(\.id),
+                    [small.id, large.id, unknown.id, empty.id])
+        expectEqual(ApplicationSortOrder.mostRecentlyUsed.sorted(apps, metadata: metadata).map(\.id),
+                    [large.id, small.id, unknown.id, empty.id])
+        let ties = Dictionary(uniqueKeysWithValues: apps.map {
+            ($0.id, ApplicationMetadata(size: SizeEstimate(bytes: 10), lastUsed: Date(timeIntervalSince1970: 100)))
+        })
+        for order in ApplicationSortOrder.allCases.filter({ $0 != .identifier }) {
+            expectEqual(order.sorted(apps.reversed(), metadata: ties).map(\.id),
+                        [unknown.id, empty.id, large.id, small.id])
+        }
+    }
+
+    func testCatalogMetadataMeasuresOnlyTheAppAndDoesNotFollowLinks() throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        let contents = app.url.appendingPathComponent("Contents/payload")
+        try Data(repeating: 65, count: 65_536).write(to: contents)
+        let baseline = try requireValue(f.scanner.metadata(for: app).size)
+        expectTrue(baseline.complete)
+        expectTrue(baseline.bytes >= 65_536)
+        let data = try f.file("Application Support/org.example.Notebook/document", contents: String(repeating: "x", count: 1_048_576))
+        try FileManager.default.createSymbolicLink(at: app.url.appendingPathComponent("Contents/external-data"),
+                                                  withDestinationURL: data.deletingLastPathComponent())
+        expectEqual(try f.scanner.metadata(for: app).size, baseline)
+    }
+
+    func testCatalogMetadataRejectsAReplacedApplication() throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        try FileManager.default.moveItem(at: app.url, to: f.root.appendingPathComponent("previous.app"))
+        _ = try f.app()
+        do {
+            _ = try f.scanner.metadata(for: app)
+            fail("Expected metadata for a replaced application to be rejected")
+        } catch SweepError.selectionChanged { }
+    }
+
     func testCatalogIncludesNestedAppsButNotTheirHelpersOrSymlinks() throws {
         let f = try Fixture(); defer { f.clean() }
         let one = try f.app("Notebook")

@@ -1,5 +1,22 @@
 # Architecture Decisions
 
+## ADR-20261124-001: Cleanup Prioritization And Remembered Success Prompts
+
+- Status: accepted, within the existing native stack; no external dependency.
+- User request: sort by app size and last use; allow closing the result dialog and
+  remember the choice not to show it again.
+- Decision: measure app-bundle allocated bytes in cancellable background tasks;
+  read `kMDItemLastUsedDate` through CoreServices. Do not substitute file access,
+  modification or installation dates for actual use. Unknown values sort last.
+- Store sort order and success-dialog preference in local UserDefaults. Keep
+  failure dialogs visible and expose a setting to restore success prompts.
+- The existing scan, explicit removal confirmation and history remain the
+  authoritative removal workflow; sorting metadata is informational only.
+- Tests: numeric/date ordering, missing metadata, bounded and symlink-safe size
+  measurements, preference persistence, dialog dismissal without navigation,
+  suppressed success with history retained, and visible failure results.
+- Evidence: Sources/AppSweepCore, AppModel, ContentView, OperationViews, QASmoke.
+
 ## ADR-20260911-001: Native, Conservative Standalone Uninstaller
 
 - Status: accepted.

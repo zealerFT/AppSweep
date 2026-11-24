@@ -34,6 +34,11 @@ struct ContentView: View {
                 Button { model.showPermissions = true } label: { Image(systemName: "hand.raised") }
                     .help(L("Permissions"))
                     .disabled(model.isRemoving)
+                Menu {
+                    Toggle(L("Show successful cleanup dialog"), isOn: $model.showsCompletionDialog)
+                } label: { Image(systemName: "gearshape") }
+                    .help(L("Options"))
+                    .accessibilityLabel(L("Options"))
             }
         }
         .sheet(isPresented: $model.showPermissions) {
@@ -49,10 +54,10 @@ struct ContentView: View {
             }
         }
         .sheet(item: $model.result) { record in
-            ResultView(record: record) {
-                model.result = nil
-                model.section = .history
-            }
+            ResultView(record: record,
+                       suppressSuccessDialog: Binding(get: { !model.showsCompletionDialog },
+                                                      set: { model.showsCompletionDialog = !$0 }),
+                       close: model.dismissResult, viewHistory: model.viewResultHistory)
         }
         .alert(item: $model.alert) { alert in
             Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text(L("OK"))))
@@ -108,21 +113,32 @@ struct ContentView: View {
                     Spacer()
                     Menu {
                         Picker(L("Sort"), selection: $model.sortOrder) {
-                            Text(L("Name")).tag(SortOrder.name)
-                            Text(L("Bundle identifier")).tag(SortOrder.identifier)
+                            ForEach(ApplicationSortOrder.allCases, id: \.self) { order in
+                                Text(L(order.title)).tag(order)
+                            }
                         }
-                    } label: { Image(systemName: "arrow.up.arrow.down") }
-                    .menuStyle(.borderlessButton).fixedSize().help(L("Sort"))
+                    } label: { Label(L(model.sortOrder.title), systemImage: "arrow.up.arrow.down").font(.caption) }
+                    .menuStyle(.borderlessButton).fixedSize().help(L("App metadata explanation"))
                 }
                 .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 4)
+                if model.isLoadingMetadata {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.mini)
+                        Text(L("Reading app information"))
+                        Spacer(minLength: 0)
+                        Text("\(model.appMetadata.count)/\(model.apps.count)").monospacedDigit()
+                    }
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .padding(.horizontal, 18).padding(.vertical, 5)
+                }
                 List(selection: Binding(get: { model.selectedID }, set: { model.select($0) })) {
                     ForEach(model.filteredApps) { app in
                         HStack(spacing: 10) {
                             AppIcon(url: app.url, size: 34)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(app.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
-                                Text(app.version.isEmpty ? app.bundleIdentifier : app.version)
-                                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                                ApplicationMetadataView(metadata: model.appMetadata[app.id],
+                                                        loading: model.isLoadingMetadata)
                             }
                             Spacer(minLength: 0)
                             if model.context.protects(app.bundleIdentifier) {
@@ -131,7 +147,7 @@ struct ContentView: View {
                             }
                         }
                         .padding(.vertical, 5).tag(app.id)
-                        .help(app.url.path)
+                        .help(app.url.path + (app.version.isEmpty ? "" : "\nv" + app.version))
                     }
                 }
                 .listStyle(.plain)
@@ -154,8 +170,45 @@ struct ContentView: View {
                     }.buttonStyle(.plain).help(L("Scan limitations"))
                 }.padding(.horizontal, 14).padding(.vertical, 10)
             }
+            if let notice = model.completionNotice {
+                Divider()
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.teal)
+                    Text(notice).font(.caption)
+                    Spacer(minLength: 0)
+                    Button { model.completionNotice = nil } label: { Image(systemName: "xmark") }
+                        .buttonStyle(.plain).help(L("Close")).accessibilityLabel(L("Close"))
+                }.padding(14)
+            }
         }
         .disabled(model.isRemoving)
+    }
+}
+
+struct ApplicationMetadataView: View {
+    let metadata: ApplicationMetadata?
+    let loading: Bool
+
+    private var sizeText: String {
+        if let size = metadata?.size { return fileSize(size) }
+        return L(metadata == nil && loading ? "Calculating" : "Size unavailable")
+    }
+
+    private var usageText: String {
+        if let lastUsed = metadata?.lastUsed {
+            return lastUsed.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
+        }
+        return L(metadata == nil && loading ? "Reading" : "No usage record")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(L("App size") + ": " + sizeText).lineLimit(1)
+                .help(L("App size explanation"))
+            Text(L("Last used") + ": " + usageText).lineLimit(1)
+                .help(metadata?.lastUsed?.formatted(date: .abbreviated, time: .shortened)
+                      ?? L("No usage record explanation"))
+        }.font(.system(size: 11)).foregroundStyle(.secondary)
     }
 }
 

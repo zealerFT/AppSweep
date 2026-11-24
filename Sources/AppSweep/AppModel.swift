@@ -20,7 +20,19 @@ func fileSize(_ size: SizeEstimate) -> String {
 }
 
 enum AppSection: String, CaseIterable { case applications, history }
-enum SortOrder: String, CaseIterable { case name, identifier }
+
+extension ApplicationSortOrder {
+    var title: String {
+        switch self {
+        case .name: "Name"
+        case .identifier: "Bundle identifier"
+        case .largest: "Largest first"
+        case .smallest: "Smallest first"
+        case .leastRecentlyUsed: "Least recently used"
+        case .mostRecentlyUsed: "Most recently used"
+        }
+    }
+}
 
 struct AppAlert: Identifiable {
     let id = UUID()
@@ -32,8 +44,16 @@ struct AppAlert: Identifiable {
 final class AppModel: ObservableObject {
     @Published var section = AppSection.applications
     @Published var query = ""
-    @Published var sortOrder = SortOrder.name
+    @Published var sortOrder: ApplicationSortOrder {
+        didSet { preferences.set(sortOrder.rawValue, forKey: "applicationSortOrder") }
+    }
+    @Published var showsCompletionDialog: Bool {
+        didSet { preferences.set(showsCompletionDialog, forKey: "showsCompletionDialog") }
+    }
     @Published var apps: [InstalledApp] = []
+    @Published var appMetadata: [String: ApplicationMetadata] = [:]
+    @Published var isLoadingMetadata = false
+    @Published var completionNotice: String?
     @Published var catalogIssues: [ScanIssue] = []
     @Published var selectedID: String?
     @Published var report: ScanReport?
@@ -51,12 +71,20 @@ final class AppModel: ObservableObject {
     private let scanner: AppScanner
     private let historyStore: HistoryStore
     private let removal: RemovalService
+    private let preferences: UserDefaults
     private var scanTask: Task<Void, Never>?
     private var scanGeneration = UUID()
+    private var metadataTask: Task<Void, Never>?
+    private var metadataGeneration = UUID()
 
     init(context: ScanContext = .live(ownBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.example.AppSweep"),
-         historyURL: URL? = nil, trash: any TrashMoving = SystemTrash()) {
+         historyURL: URL? = nil, trash: any TrashMoving = SystemTrash(),
+         preferences: UserDefaults = .standard) {
         self.context = context
+        self.preferences = preferences
+        sortOrder = preferences.string(forKey: "applicationSortOrder")
+            .flatMap(ApplicationSortOrder.init(rawValue:)) ?? .name
+        showsCompletionDialog = preferences.object(forKey: "showsCompletionDialog") as? Bool ?? true
         scanner = AppScanner(context: context)
         historyStore = HistoryStore(url: historyURL ?? context.home
             .appendingPathComponent("Library/Application Support")
@@ -67,14 +95,10 @@ final class AppModel: ObservableObject {
 
     var selectedApp: InstalledApp? { apps.first { $0.id == selectedID } }
     var filteredApps: [InstalledApp] {
-        apps.filter {
+        sortOrder.sorted(apps.filter {
             query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)
                 || $0.bundleIdentifier.localizedCaseInsensitiveContains(query)
-        }.sorted {
-            let left = sortOrder == .name ? $0.name : $0.bundleIdentifier
-            let right = sortOrder == .name ? $1.name : $1.bundleIdentifier
-            return left.localizedStandardCompare(right) == .orderedAscending
-        }
+        }, metadata: appMetadata)
     }
     var chosen: [RemovalCandidate] {
         report?.candidates.filter { selectedCandidates.contains($0.id) && $0.canSelect } ?? []
@@ -90,6 +114,9 @@ final class AppModel: ObservableObject {
 
     func reload() async {
         guard !isRemoving, !isLoading else { return }
+        metadataTask?.cancel()
+        metadataGeneration = UUID()
+        isLoadingMetadata = false
         isLoading = true
         defer { isLoading = false }
         do {
@@ -97,10 +124,44 @@ final class AppModel: ObservableObject {
             let catalog = try await background { try scanner.catalog() }
             apps = catalog.applications
             catalogIssues = catalog.issues
+            loadCatalogMetadata()
             if let selectedID, !apps.contains(where: { $0.id == selectedID }) { select(nil) }
             else if let selectedID { select(selectedID) }
         } catch is CancellationError {
         } catch { show(error) }
+    }
+
+    private func loadCatalogMetadata() {
+        let generation = metadataGeneration
+        let scanner = scanner
+        let catalogApps = apps
+        appMetadata = [:]
+        isLoadingMetadata = !catalogApps.isEmpty
+        metadataTask = Task {
+            defer {
+                if generation == metadataGeneration { isLoadingMetadata = false }
+            }
+            await withTaskGroup(of: (String, ApplicationMetadata).self) { group in
+                var remaining = catalogApps.makeIterator()
+                func add(_ app: InstalledApp) {
+                    group.addTask {
+                        let metadata = try? await background { try scanner.metadata(for: app) }
+                        return (app.id, metadata ?? ApplicationMetadata())
+                    }
+                }
+                for _ in 0..<3 {
+                    if let app = remaining.next() { add(app) }
+                }
+                for await (id, metadata) in group {
+                    guard !Task.isCancelled, generation == metadataGeneration else {
+                        group.cancelAll()
+                        return
+                    }
+                    appMetadata[id] = metadata
+                    if let app = remaining.next() { add(app) }
+                }
+            }
+        }
     }
 
     func select(_ id: String?) {
@@ -190,18 +251,36 @@ final class AppModel: ObservableObject {
         guard let report, !isRemoving, !isScanning else { return }
         let selection = selectedCandidates
         showConfirmation = false
+        completionNotice = nil
         isRemoving = true
         do {
             let record = try await removal.remove(report: report, selectedIDs: selection) { app in
                 await MainActor.run { AppModel.isRunning(app) }
             }
-            result = record
+            presentResult(record)
         } catch { show(error) }
         isRemoving = false
         self.report = nil
         selectedCandidates = []
         await loadHistory()
         await reload()
+    }
+
+    func presentResult(_ record: OperationRecord) {
+        if record.succeeded && !showsCompletionDialog {
+            result = nil
+            completionNotice = "\(record.trashedCount) " + L("moved to Trash")
+        } else {
+            completionNotice = nil
+            result = record
+        }
+    }
+
+    func dismissResult() { result = nil }
+
+    func viewResultHistory() {
+        dismissResult()
+        section = .history
     }
 
     func loadHistory() async {

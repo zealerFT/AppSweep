@@ -201,12 +201,21 @@ struct HistoryRecordView: View {
 
 struct ResultView: View {
     let record: OperationRecord
+    @Binding var suppressSuccessDialog: Bool
+    let close: () -> Void
     let viewHistory: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Label(L(record.succeeded ? "Moved to Trash" : "Removal stopped"),
-                  systemImage: record.succeeded ? "checkmark.circle" : "exclamationmark.triangle")
-                .font(.title2.weight(.semibold)).foregroundStyle(record.succeeded ? .teal : .orange)
+            HStack(alignment: .top) {
+                Label(L(record.succeeded ? "Moved to Trash" : "Removal stopped"),
+                      systemImage: record.succeeded ? "checkmark.circle" : "exclamationmark.triangle")
+                    .font(.title2.weight(.semibold)).foregroundStyle(record.succeeded ? .teal : .orange)
+                Spacer()
+                Button(action: close) { Image(systemName: "xmark.circle.fill").font(.title3) }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help(L("Close")).accessibilityLabel(L("Close"))
+                    .keyboardShortcut(.cancelAction)
+            }
             Text(record.appName).font(.headline)
             Text("\(record.trashedCount) / \(record.entries.count) " + L("moved to Trash"))
             if let error = record.journalError {
@@ -216,10 +225,16 @@ struct ResultView: View {
                 }
             }
             Text(L("Trash space notice")).font(.caption).foregroundStyle(.secondary)
+            if record.succeeded {
+                Toggle(L("Do not show successful cleanup again"), isOn: $suppressSuccessDialog)
+                    .toggleStyle(.checkbox)
+                Text(L("Completion preference explanation")).font(.caption).foregroundStyle(.secondary)
+            }
             Divider()
             HStack {
                 Spacer()
-                Button(L("View history"), action: viewHistory).keyboardShortcut(.defaultAction)
+                Button(L("View history"), action: viewHistory)
+                Button(L("Close"), action: close).keyboardShortcut(.defaultAction)
             }
         }.padding(24).frame(width: 460)
     }

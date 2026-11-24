@@ -1,4 +1,5 @@
 import Foundation
+import CoreServices
 
 public struct AppScanner: Sendable {
     public let context: ScanContext
@@ -6,6 +7,22 @@ public struct AppScanner: Sendable {
 
     public func inspect(_ url: URL) throws -> InstalledApp {
         try FileSafety.application(url, context: context)
+    }
+
+    public func metadata(for app: InstalledApp) throws -> ApplicationMetadata {
+        try Task.checkCancellation()
+        let current = try inspect(app.url)
+        guard current.identity == app.identity, current.bundleIdentifier == app.bundleIdentifier else {
+            throw SweepError.selectionChanged
+        }
+        let lastUsed: Date?
+        if let item = MDItemCreate(kCFAllocatorDefault, app.url.path as CFString) {
+            lastUsed = MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
+        } else {
+            lastUsed = nil
+        }
+        let size = try estimateSize(app.url, timeLimit: 2)
+        return ApplicationMetadata(size: size.complete || size.bytes > 0 ? size : nil, lastUsed: lastUsed)
     }
 
     public func catalog() throws -> CatalogReport {
@@ -173,7 +190,7 @@ public struct AppScanner: Sendable {
         return found
     }
 
-    private func estimateSize(_ url: URL) throws -> SizeEstimate {
+    private func estimateSize(_ url: URL, timeLimit: TimeInterval = 6) throws -> SizeEstimate {
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .isSymbolicLinkKey,
                                         .fileAllocatedSizeKey, .totalFileAllocatedSizeKey]
         guard let identity = try FileIdentity.read(url) else { throw SweepError.selectionChanged }
@@ -184,7 +201,7 @@ public struct AppScanner: Sendable {
         var complete = true
         var total: Int64 = 0
         var count = 0
-        let deadline = Date().addingTimeInterval(6)
+        let deadline = Date().addingTimeInterval(timeLimit)
         guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: Array(keys),
                                                               options: [], errorHandler: { _, _ in
             complete = false

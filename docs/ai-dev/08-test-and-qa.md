@@ -1,6 +1,6 @@
 # Test And QA Runbook
 
-Updated: 2026-09-11.
+Updated: 2026-11-24.
 
 ## Safety Tests
 
@@ -8,7 +8,9 @@ Run `swift run AppSweepSafetyChecks`. The executable exits nonzero on any failed
 assertion or unexpected error. Tests use unique, canonicalized temporary roots
 and an injected staging Trash adapter, never the user's real applications.
 
-Verified result: 26 checks, 0 failures on the development macOS / Swift 6 toolchain.
+Verified result: 29 checks, 0 failures on the development macOS / Swift 6 toolchain.
+Includes numeric/date catalog ordering with unknown values last, app-only size
+measurement without following symbolic links, and stale metadata rejection.
 
 Coverage: catalog boundaries, exact bundle IDs, ByHost UUIDs, personal-data defaults,
 duplicate copies, protected apps, traversal, candidate/ancestor symlinks, permission
@@ -23,8 +25,8 @@ lexical normalization does not silently resolve candidate symlinks.
 ## Native UI QA
 
 ```bash
-CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
-build/qa-app/AppSweep.app/Contents/MacOS/AppSweep --qa-smoke "$PWD/build/qa" -AppleLanguages '(zh-Hans)'
+CONFIGURATION=debug OUT_DIR="$PWD/.build/qa-preview.noindex" APP_BUNDLE_ID=io.github.zealerft.AppSweep.QA bash scripts/build.sh
+.build/qa-preview.noindex/AppSweep.app/Contents/MacOS/AppSweep --qa-smoke "$PWD/.build/qa-results.noindex" -AppleLanguages '(zh-Hans)'
 ```
 
 QA loads generated app/Library fixtures, drives the real observable model,
@@ -33,12 +35,19 @@ color diversity, and writes `build/qa/report.json` plus images. It does not
 capture other windows, require Screen Recording permission, grant filesystem
 permissions, quit real applications, or use the real system Trash adapter.
 
-Verified result: 15 workflow checks, 7 nonblank images, visually inspected. Desktop
+Verified result: 27 workflow checks, 7 nonblank images per language. Desktop
 (1100 x 740), minimum window (880 x 620), dark mode, confirmation, permissions,
 result and history layouts were checked for clipping, overlap and missing text.
 Packaged resource loading is asserted, rather than relying on SwiftPM's absolute
 build-directory fallback. App icons in QA are generic because the fixtures are
 deliberately non-executable; normal mode uses real installed application icons.
+UI checks cover real bundle-size loading, refreshed metadata, missing usage
+records, persistence in an isolated UserDefaults suite, closing without navigating,
+suppressed-success history, visible failures, and re-enabling dialogs.
+
+Temporary QA bundles stay under `.build/*.noindex` and are removed after testing.
+Keep only `/Applications/AppSweep.app` as the installed copy; update it from the
+same version tag used to build the downloadable installer.
 
 Screen Recording permission is not granted on this Mac. Main-window images use
 AppKit view caching. macOS 26 compositor-managed sheet snapshots were blank, so
