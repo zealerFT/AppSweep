@@ -147,6 +147,8 @@ bash scripts/dmg.sh
 
 To run the isolated UI smoke test:
 
+Local builds also check an existing locally signed `/Applications/AppSweep.app` with the same Bundle ID, so deleting build output does not remove the update identity check.
+
 ```bash
 ALLOW_ADHOC_SIGNING=1 CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
 build/qa-app/AppSweep.app/Contents/MacOS/AppSweep \

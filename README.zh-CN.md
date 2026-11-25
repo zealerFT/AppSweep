@@ -143,6 +143,8 @@ bash scripts/dmg.sh
 
 运行隔离 UI QA：
 
+若 `/Applications/AppSweep.app` 已使用本地固定签名且 Bundle ID 相同，构建还会自动核对该已安装应用的身份，清理构建产物不会丢失这项更新检查。
+
 ```bash
 ALLOW_ADHOC_SIGNING=1 CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
 build/qa-app/AppSweep.app/Contents/MacOS/AppSweep \

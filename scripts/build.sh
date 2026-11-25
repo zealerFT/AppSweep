@@ -75,6 +75,12 @@ if [[ -n "${PREVIOUS_APP:-}" ]]; then
     bash "$ROOT/scripts/check-signing-continuity.sh" "$PREVIOUS_APP" "$APP"
 elif [[ "$SIGNING_MODE" == local && -d "$OUT_DIR/AppSweep.app" ]]; then
     bash "$ROOT/scripts/check-signing-continuity.sh" "$OUT_DIR/AppSweep.app" "$APP"
+elif [[ "$SIGNING_MODE" == local && -d /Applications/AppSweep.app ]]; then
+    INSTALLED_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' /Applications/AppSweep.app/Contents/Info.plist)"
+    INSTALLED_MODE="$(/usr/libexec/PlistBuddy -c 'Print :AppSweepSigningMode' /Applications/AppSweep.app/Contents/Info.plist 2>/dev/null || true)"
+    if [[ "$INSTALLED_ID" == "$APP_BUNDLE_ID" && "$INSTALLED_MODE" == local ]]; then
+        bash "$ROOT/scripts/check-signing-continuity.sh" /Applications/AppSweep.app "$APP"
+    fi
 fi
 if [[ -e "$OUT_DIR/AppSweep.app" ]]; then
     mv "$OUT_DIR/AppSweep.app" "$STAGE/previous-build.app"
