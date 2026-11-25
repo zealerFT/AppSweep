@@ -22,7 +22,10 @@ jobs:
         run: swift --version
 
       - name: Check shell scripts
-        run: bash -n scripts/build.sh scripts/dmg.sh scripts/release.sh
+        run: bash -n scripts/build.sh scripts/dmg.sh scripts/release.sh scripts/check-signing-continuity.sh scripts/test-signing-continuity.sh
+
+      - name: Check signing continuity guard
+        run: bash scripts/test-signing-continuity.sh
 
       - name: Run core safety checks
         run: swift run AppSweepSafetyChecks

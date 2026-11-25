@@ -102,9 +102,16 @@ public struct OperationEntry: Identifiable, Codable, Sendable {
 
 public struct RemovalFailure: Codable, Sendable {
     public enum Kind: String, Codable, Sendable { case permissionDenied, cancelled, other }
+    public struct SystemError: Codable, Equatable, Sendable {
+        public let domain: String
+        public let code: Int
+    }
     public let kind: Kind
     public let domain: String
     public let code: Int
+    // Optional so records written before diagnostics were added still decode.
+    // Only error codes are stored, never arbitrary NSError.userInfo contents.
+    public let underlyingErrors: [SystemError]?
 
     public init(_ error: Error) {
         let original = error as NSError
@@ -112,6 +119,7 @@ public struct RemovalFailure: Codable, Sendable {
         code = original.code
         var current = original
         var classified = Kind.other
+        var chain: [SystemError] = []
         // Preserve a small, non-sensitive diagnostic instead of serializing
         // NSError.userInfo. Permission failures are often wrapped by Cocoa.
         for _ in 0..<8 {
@@ -128,9 +136,11 @@ public struct RemovalFailure: Codable, Sendable {
                 classified = .permissionDenied
             }
             guard let underlying = current.userInfo[NSUnderlyingErrorKey] as? NSError else { break }
+            chain.append(SystemError(domain: underlying.domain, code: underlying.code))
             current = underlying
         }
         kind = classified
+        underlyingErrors = chain.isEmpty ? nil : chain
     }
 }
 

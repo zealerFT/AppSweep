@@ -88,8 +88,8 @@
 "App management explanation" = "macOS 可单独限制应用更新或删除其他应用，允许项由系统管理。";
 "Handled by macOS" = "由系统按需确认";
 "Permission after update notice" = "授权后请退出并重新打开 AppSweep。若更新后开关已开但仍被拒绝，请在对应权限列表移除旧条目，再添加“应用程序”中的当前 AppSweep；临时签名版本的授权可能随更新失效。";
-"Application permission failure" = "macOS 未允许移除此应用。完全磁盘访问不等于管理员权限，请检查“隐私与安全性 → App 管理”，并完成系统要求的认证。仍无法移除时，可在访达中处理。后续所选数据未继续清理。";
-"Data permission failure" = "macOS 未允许移除此数据项。请检查 AppSweep 的完全磁盘访问权限，授权后退出并重新打开。后续项目未继续处理；已移走的项目可从操作记录找到。";
+"Application permission failure" = "macOS 拒绝将此应用移到废纸篓。这个错误本身无法区分旧授权失效、文件权限或系统保护，不能据此认定缺少“App 管理”权限。后续所选数据已保留；技术详情中包含系统返回的错误。";
+"Data permission failure" = "macOS 拒绝将此数据项移到废纸篓。这个错误本身无法确定具体是哪项权限或保护导致。后续项目已保留；技术详情中包含系统返回的错误，已移走的项目可从操作记录找到。";
 "Removal cancelled explanation" = "系统回收操作已取消，后续项目未继续处理。已移走的项目可从操作记录找到。";
 "Removal failure explanation" = "macOS 未完成此项目的回收，后续项目未继续处理。可在访达中核对文件，或展开技术详情查看系统返回的原因。";
 "Technical details" = "技术详情";

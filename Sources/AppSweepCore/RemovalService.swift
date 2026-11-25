@@ -8,9 +8,9 @@ public protocol TrashMoving: Sendable {
 public struct SystemTrash: TrashMoving {
     public init() {}
     @MainActor public func moveToTrash(_ url: URL) async throws -> URL? {
-        // Use the system's interactive file operation, which can present its
-        // own confirmation/authorization UI. A plain FileManager operation has
-        // no way to resolve an authorization failure for an installed app.
+        // AppKit may display progress UI, but recycle is not a privilege
+        // escalation API. Do not treat a denial as proof that a particular
+        // privacy permission is missing or promise an authentication prompt.
         try await withCheckedThrowingContinuation { continuation in
             NSWorkspace.shared.recycle([url]) { destinations, error in
                 if let destination = destinations[url] {

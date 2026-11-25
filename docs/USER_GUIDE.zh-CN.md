@@ -14,12 +14,12 @@
 
 ## 安装应用
 
-1. [下载 AppSweep-0.2.1-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg)，要求 macOS 13 或更高版本，同一安装包包含 Apple Silicon 和 Intel 两种架构。
+1. [下载 AppSweep-0.2.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg)，要求 macOS 13 或更高版本，同一安装包包含 Apple Silicon 和 Intel 两种架构。
 2. 双击打开磁盘映像，把 `AppSweep.app` 拖到“应用程序”文件夹。
 3. 从“应用程序”文件夹打开 AppSweep。
 4. 此预发布版尚未经过 Apple Developer ID 签名和公证。如果 macOS 提示无法验证开发者，请先确认下载来自本仓库，再打开“系统设置 → 隐私与安全性 → 仍要打开”，并确认“打开”。该按钮通常在尝试启动后才会出现；受组织管理的 Mac 可能不允许打开。
 
-无需下载源码或自行编译。在 [版本下载页面](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1) 选择 `.dmg` 文件即可，`Source code (zip/tar.gz)` 是给开发者使用的源码。
+无需下载源码或自行编译。在 [版本下载页面](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0) 选择 `.dmg` 文件即可，`Source code (zip/tar.gz)` 是给开发者使用的源码。0.2.1 仍在修复和验证中，尚未发布。
 
 ## 授予完全磁盘访问权限
 
@@ -33,7 +33,7 @@ AppSweep 只在需要读取当前用户 Library 中受保护的目录时需要�
 
 AppSweep 不会自动提权，也不会修改 SIP、Gatekeeper 或 macOS 的隐私设置。完全磁盘访问权限不等于管理员权限。
 
-若数据能清理，但应用本体被系统拒绝，请检查“隐私与安全性 → App 管理”。AppSweep 使用系统回收流程；系统可能显示确认或认证窗口。取消后会停止后续处理。无法处理的应用可从失败结果中选择“在访达中显示”，交由访达或官方卸载器处理。
+通用权限错误不能确定具体缺少哪项权限，不应据此反复切换“App 管理”或完全磁盘访问开关。AppSweep 的系统回收接口不保证弹出管理员认证；失败或取消后会停止后续处理。结果窗口提供技术详情与“在访达中显示”，无法处理的应用可以交由访达或官方卸载器处理。
 
 更新临时签名版本后，旧授权可能不再匹配新版本。如果权限开关已开启却仍被系统拒绝，请退出 AppSweep，在对应权限列表移除旧条目，再添加“应用程序”中的当前 AppSweep，并重新打开。反复刷新不会改变系统授权。
 

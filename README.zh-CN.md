@@ -20,9 +20,9 @@
 <p align="center"><a href="README.md">English</a> · <strong>简体中文</strong></p>
 
 <p align="center">
-  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg">下载 macOS 安装包 — v0.2.1 预发布版</a></strong><br />
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg">下载 macOS 安装包 — v0.2.0 预发布版</a></strong><br />
   macOS 13 及以上 · Apple Silicon 与 Intel 通用 · 无需编译<br />
-  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1">更新说明与校验文件</a>
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0">更新说明与校验文件</a>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ AppSweep 是一款原生 macOS 应用清理工具。它按应用的 Bundle ID �
 
 采用 **SwiftUI 和 AppKit** 开发，无第三方包依赖。应用**离线运行**，提供中文和英文界面。
 
-当前版本是 **0.2.1 预发布版**。它适合测试和反馈，尚未代表已经完成所有 macOS 版本、Intel 设备和干净系统环境验收的正式发行版。
+当前源码为 **0.2.1，尚未发布**；可下载版本为 **0.2.0 预发布版**。临时签名的预览版本更新可能使旧隐私授权失效，即使系统设置中的开关仍然开启。分发更新要保持签名身份，需要固定的签名证书。这些预览版本尚未完成所有支持环境的正式验收。
 
 ## 界面预览
 
@@ -76,17 +76,17 @@ AppSweep 是一款原生 macOS 应用清理工具。它按应用的 Bundle ID �
 
 ## 安装和首次使用
 
-1. [下载 AppSweep-0.2.1-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg)。一个安装包包含 Apple Silicon 和 Intel 两种架构，要求 macOS 13 或更高版本。
+1. [下载 AppSweep-0.2.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg)。一个安装包包含 Apple Silicon 和 Intel 两种架构，要求 macOS 13 或更高版本。
 2. 双击打开 `.dmg`，将 **AppSweep** 拖到 **Applications（应用程序）**。
 3. 从“应用程序”文件夹打开 AppSweep，无需安装 Xcode、运行命令或自行编译。
 
-在 [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1) 页面选择 `.dmg` 即可；**Source code (zip/tar.gz)** 是给开发者使用的源码。
+在 [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0) 页面选择 `.dmg` 即可；**Source code (zip/tar.gz)** 是给开发者使用的源码。
 
 **首次打开提示：** 此预发布版使用 ad-hoc 签名，尚未经过 Apple Developer ID 签名和公证。如果 macOS 提示无法验证开发者，请先确认文件来自本仓库，再打开 **系统设置 → 隐私与安全性 → 仍要打开**，并确认“打开”。该按钮通常在尝试启动后才会出现；受组织管理的 Mac 可能不允许打开。
 
 需要扫描当前用户 Library 中受保护的目录时，在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中允许 AppSweep。按 macOS 提示重新打开应用后，再点击“立即重新扫描”。
 
-移除应用使用 macOS 的系统回收流程，系统可能显示确认或认证窗口。完全磁盘访问不等于管理员权限；应用移除被拒绝时，请检查“隐私与安全性 → App 管理”，也可从结果窗口选择“在访达中显示”。临时签名版本更新后，可能需要在对应权限列表重新添加当前应用并重启 AppSweep。
+移除应用使用 macOS 的系统回收接口，该接口不保证弹出管理员认证。通用权限错误不能确定具体缺少哪项权限；结果窗口提供系统错误详情与“在访达中显示”入口。临时签名版本更新后，旧授权可能不再对应新程序，保持 Bundle ID 不变不能解决此问题。
 
 选中应用本体时会先移除本体，再处理所选关联数据。本体被拒绝或用户取消时，关联数据保持原样；失败和未处理项目会明确显示。
 
@@ -134,17 +134,17 @@ AppSweep 在本机运行，没有账号、分析、广告、网络客户端、�
 git clone https://github.com/zealerFT/AppSweep.git
 cd AppSweep
 swift run AppSweepSafetyChecks
-bash scripts/build.sh
+ALLOW_ADHOC_SIGNING=1 bash scripts/build.sh
 open dist/AppSweep.app
 bash scripts/dmg.sh
 ```
 
-`scripts/build.sh` 默认读取仓库根目录的 `VERSION`，生成当前架构的本地测试包，使用 ad-hoc 签名，未公证。构建产物位于 `dist/`，不会被提交到 Git，因为 `.gitignore` 已排除 `.build/`、`build/` 和 `dist/`。
+`scripts/build.sh` 默认要求 `DEVELOPER_ID_APPLICATION`，仅在明确设置 `ALLOW_ADHOC_SIGNING=1` 时生成临时签名测试包。这类包未公证，更新可能使旧隐私授权失效。产物放在 Git 忽略的 `dist/`。构建更新时将 `PREVIOUS_APP` 指向旧应用；新包不满足旧签名要求时会中止。脚本不会替换或启动已安装的 App。
 
 运行隔离 UI QA：
 
 ```bash
-CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
+ALLOW_ADHOC_SIGNING=1 CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
 build/qa-app/AppSweep.app/Contents/MacOS/AppSweep \
   --qa-smoke "$PWD/build/qa" -AppleLanguages '(zh-Hans)'
 ```
@@ -157,7 +157,7 @@ swift run AppSweepSafetyChecks
 
 ## 正式分发
 
-当前可下载的预发布版由 [GitHub Actions](.github/workflows/release.yml) 从对应的 `vX.Y.Z` 标签构建。流程会核对 `VERSION`、运行安全检查、构建两种架构、验证应用和磁盘映像，再发布为 **Pre-release**，附上 `SHA256SUMS.txt` 和 `build-info.json`。后者记录源码提交，应用的 `Info.plist` 中也保存该提交。公开安装包统一使用 `io.github.zealerft.AppSweep` 作为 Bundle ID。以后发布新版本时，先准备对应的 `docs/releases/vX.Y.Z.md` 并更新下载链接，再打标签。
+当前可下载的预发布版由 [GitHub Actions](.github/workflows/release.yml) 从对应的 `vX.Y.Z` 标签构建。流程会核对 `VERSION`、运行安全检查、构建两种架构、验证应用和磁盘映像，再发布为 **Pre-release**，附上 `SHA256SUMS.txt` 和 `build-info.json`。后者记录源码提交，应用的 `Info.plist` 中也保存该提交。公开安装包统一使用 `io.github.zealerft.AppSweep` 作为 Bundle ID。发布前准备对应的 `docs/releases/vX.Y.Z.md`；安装包实际发布成功后再更新下载链接。
 
 如需可验证开发者身份、经过公证的正式版本，发布者需要自己的 Apple Developer Program 账号、Developer ID 证书和 `notarytool` 钥匙串 profile。正式签名脚本与预发布流程分开：
 

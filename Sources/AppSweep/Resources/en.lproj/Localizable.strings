@@ -88,8 +88,8 @@
 "App management explanation" = "macOS can separately restrict apps from updating or deleting other apps. Authorization is managed by the system.";
 "Handled by macOS" = "Confirmed by macOS as needed";
 "Permission after update notice" = "Quit and reopen AppSweep after granting access. If an update leaves an enabled switch but access is still denied, remove the old entry and add the current AppSweep from Applications. Ad-hoc signed builds may lose authorization after an update.";
-"Application permission failure" = "macOS did not allow this app to be removed. Full Disk Access does not grant administrator privileges. Check Privacy & Security → App Management and complete any authentication requested by macOS. If needed, handle the app in Finder. Subsequent selected data was left in place.";
-"Data permission failure" = "macOS did not allow this data item to be removed. Check AppSweep's Full Disk Access, then quit and reopen it. Subsequent items were left in place; locate items already moved through History.";
+"Application permission failure" = "macOS refused to move this app to Trash. This error alone cannot distinguish outdated authorization, file permissions or system protection; it does not establish that App Management permission is missing. Subsequent selected data was left in place. Technical Details contains the system errors.";
+"Data permission failure" = "macOS refused to move this data item to Trash. This error alone does not identify the permission or protection responsible. Subsequent items were left in place. Technical Details contains the system errors; locate any items already moved through History.";
 "Removal cancelled explanation" = "The system Trash operation was cancelled. Subsequent items were left in place. Locate any items already moved through History.";
 "Removal failure explanation" = "macOS could not recycle this item, so subsequent items were not processed. Inspect it in Finder or expand Technical Details for the system error.";
 "Technical details" = "Technical Details";

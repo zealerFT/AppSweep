@@ -20,9 +20,9 @@
 <p align="center"><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
-  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg">Download for macOS — v0.2.1 preview</a></strong><br />
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg">Download for macOS — v0.2.0 preview</a></strong><br />
   macOS 13+ · Apple Silicon &amp; Intel · No compilation required<br />
-  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1">Release notes and checksums</a>
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0">Release notes and checksums</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@ AppSweep is a native macOS application cleanup utility. It finds associated cach
 
 Built with **SwiftUI and AppKit**, with no third-party package dependencies. AppSweep works **offline**, with Chinese and English interfaces.
 
-The current version is **0.2.1 prerelease**. It is intended for testing and feedback. It has not yet been validated as a final release on every supported macOS version, Intel Mac, or clean system configuration.
+The current source is **0.2.1, not yet released**; the downloadable preview is **0.2.0**. Ad-hoc signed preview updates can invalidate privacy grants even when their switches remain enabled. Consistent signing across distributed updates requires a fixed signing certificate. These previews have not been validated as a final release on every supported configuration.
 
 ## Screenshots
 
@@ -75,11 +75,11 @@ These screenshots use an isolated sample application and fictional paths. They c
 
 ## Install and first use
 
-1. [Download AppSweep-0.2.1-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
+1. [Download AppSweep-0.2.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
 2. Open the `.dmg` and drag **AppSweep** to **Applications**.
 3. Launch AppSweep from Applications. No Xcode, terminal commands, or compilation are required.
 
-Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1); **Source code (zip/tar.gz)** is for developers.
+Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0); **Source code (zip/tar.gz)** is for developers.
 
 **First launch:** this preview is ad-hoc signed, without Apple Developer ID signing or notarization. If macOS cannot verify the developer, confirm that you downloaded it from this repository, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. This option normally appears after an attempted launch; managed Macs may prevent it.
 
@@ -90,7 +90,7 @@ To scan protected locations in the current user's Library:
 3. In **Privacy & Security → Full Disk Access**, add the `AppSweep.app` that you are currently running and enable it.
 4. Relaunch AppSweep if macOS requests it, then choose **Rescan now**.
 
-AppSweep uses macOS's system recycle operation; macOS may display its own confirmation or authentication UI. Full Disk Access does not grant administrator privileges. If an app cannot be removed, check **Privacy & Security → App Management** or use **Show in Finder** from the result. Ad-hoc signed updates can require re-adding the current app to the relevant permission list and relaunching it.
+AppSweep uses macOS's recycle API, which does not guarantee administrator authentication. A generic permission error cannot identify a specific missing grant; the result provides system error details and **Show in Finder**. With ad-hoc updates, an old grant may no longer match the new program. Keeping the Bundle ID unchanged does not resolve that mismatch.
 
 When the app itself is selected, it is moved first. If macOS refuses or the user cancels, the selected associated data stays in place. Errors and skipped items remain visible in the result and History.
 
@@ -138,17 +138,17 @@ The build script can target Apple Silicon (`arm64`) and Intel (`x86_64`). Intel 
 git clone https://github.com/zealerFT/AppSweep.git
 cd AppSweep
 swift run AppSweepSafetyChecks
-bash scripts/build.sh
+ALLOW_ADHOC_SIGNING=1 bash scripts/build.sh
 open dist/AppSweep.app
 bash scripts/dmg.sh
 ```
 
-`scripts/build.sh` reads the repository's `VERSION` file, builds a local package for the current architecture, and applies an ad hoc signature. It is not notarized. Build output is written to `dist/` and is ignored by Git.
+`scripts/build.sh` requires `DEVELOPER_ID_APPLICATION` unless a disposable preview is explicitly requested with `ALLOW_ADHOC_SIGNING=1`. An ad-hoc preview is not notarized and privacy grants may not survive an update. Output is written to the Git-ignored `dist/` folder. Set `PREVIOUS_APP` to the existing bundle when building an update; the build then refuses a candidate that does not match its signing requirement. It does not replace or launch the installed app.
 
 To run the isolated UI smoke test:
 
 ```bash
-CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
+ALLOW_ADHOC_SIGNING=1 CONFIGURATION=debug OUT_DIR="$PWD/build/qa-app" bash scripts/build.sh
 build/qa-app/AppSweep.app/Contents/MacOS/AppSweep \
   --qa-smoke "$PWD/build/qa" -AppleLanguages '(en)'
 ```
@@ -161,7 +161,7 @@ swift run AppSweepSafetyChecks
 
 ## Distribution outside the App Store
 
-The downloadable preview is built by [GitHub Actions](.github/workflows/release.yml) from a matching `vX.Y.Z` tag. The workflow checks `VERSION`, runs the safety checks, builds both architectures, verifies the app and disk image, and publishes a **prerelease** with `SHA256SUMS.txt` and `build-info.json`. The latter records the source commit, which is also embedded in the app's `Info.plist`. Published installers use `io.github.zealerft.AppSweep` as their Bundle ID. A new version needs a matching `docs/releases/vX.Y.Z.md` and updated download links before tagging.
+The downloadable preview is built by [GitHub Actions](.github/workflows/release.yml) from a matching `vX.Y.Z` tag. The workflow checks `VERSION`, runs the safety checks, builds both architectures, verifies the app and disk image, and publishes a **prerelease** with `SHA256SUMS.txt` and `build-info.json`. The latter records the source commit, which is also embedded in the app's `Info.plist`. Published installers use `io.github.zealerft.AppSweep` as their Bundle ID. Prepare `docs/releases/vX.Y.Z.md` before tagging; update download links only after the release assets exist.
 
 For a release with a verified developer identity and notarization, the distributor must provide an Apple Developer Program account, a Developer ID certificate, and a `notarytool` keychain profile. The signed release script remains separate from the preview workflow:
 

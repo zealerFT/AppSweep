@@ -124,10 +124,12 @@ struct PermissionsView: View {
                     Label(L("Open System Settings"), systemImage: "arrow.up.forward.app")
                 }
             }
-            Text(L("Permission after update notice")).font(.caption).foregroundStyle(.secondary)
+            if Bundle.main.object(forInfoDictionaryKey: "AppSweepSigningMode") as? String == "ad-hoc" {
+                Text(L("Permission after update notice")).font(.caption).foregroundStyle(.secondary)
+            }
             Divider()
             LabeledContent(L("Scan scope"), value: L("Current user Library"))
-            LabeledContent(L("Administrator privileges"), value: L("Handled by macOS"))
+            LabeledContent(L("Administrator privileges"), value: L("Not requested"))
             LabeledContent(L("Network access"), value: L("Not used"))
             Text(L("Permission scope notice")).font(.caption).foregroundStyle(.secondary)
             if !issues.isEmpty { ScanIssuesView(issues: issues) }
@@ -279,11 +281,6 @@ private struct OperationFailureView: View {
                 .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if entry.failure?.kind != .cancelled {
                 HStack {
-                    if isApplication {
-                        Button(L("App Management")) { openPrivacySettings("Privacy_AppBundles") }
-                    } else if entry.failure?.kind == .permissionDenied {
-                        Button(L("Full Disk Access")) { openPrivacySettings("Privacy_AllFiles") }
-                    }
                     Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                         .disabled(!FileManager.default.fileExists(atPath: entry.originalPath))
                 }.controlSize(.small)
@@ -294,6 +291,9 @@ private struct OperationFailureView: View {
                         Text(error).textSelection(.enabled)
                         if let failure = entry.failure {
                             Text("\(failure.domain) (\(failure.code))").textSelection(.enabled)
+                            ForEach(Array((failure.underlyingErrors ?? []).enumerated()), id: \.offset) { _, error in
+                                Text("↳ \(error.domain) (\(error.code))").textSelection(.enabled)
+                            }
                         }
                     }.font(.caption).foregroundStyle(.secondary)
                 }.font(.caption)

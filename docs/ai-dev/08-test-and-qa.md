@@ -25,7 +25,7 @@ lexical normalization does not silently resolve candidate symlinks.
 ## Native UI QA
 
 ```bash
-CONFIGURATION=debug OUT_DIR="$PWD/.build/qa-preview.noindex" APP_BUNDLE_ID=io.github.zealerft.AppSweep.QA bash scripts/build.sh
+ALLOW_ADHOC_SIGNING=1 CONFIGURATION=debug OUT_DIR="$PWD/.build/qa-preview.noindex" APP_BUNDLE_ID=io.github.zealerft.AppSweep.QA bash scripts/build.sh
 .build/qa-preview.noindex/AppSweep.app/Contents/MacOS/AppSweep --qa-smoke "$PWD/.build/qa-results.noindex" -AppleLanguages '(zh-Hans)'
 ```
 
@@ -61,7 +61,7 @@ WindowServer screenshots. The release build excludes the QA implementation.
 
 ```bash
 bash -n scripts/build.sh scripts/dmg.sh scripts/release.sh
-ARCHS="arm64 x86_64" bash scripts/build.sh
+ALLOW_ADHOC_SIGNING=1 ARCHS="arm64 x86_64" bash scripts/build.sh
 codesign --verify --strict --verbose=2 dist/AppSweep.app
 lipo -archs dist/AppSweep.app/Contents/MacOS/AppSweep
 bash scripts/dmg.sh

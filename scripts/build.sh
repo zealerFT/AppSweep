@@ -5,10 +5,25 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIGURATION="${CONFIGURATION:-release}"
 ARCHS="${ARCHS:-$(uname -m)}"
 OUT_DIR="${OUT_DIR:-$ROOT/dist}"
-APP_BUNDLE_ID="${APP_BUNDLE_ID:-com.example.AppSweep}"
+APP_BUNDLE_ID="${APP_BUNDLE_ID:-io.github.zealerft.AppSweep}"
 APP_VERSION="${APP_VERSION:-$(cat "$ROOT/VERSION")}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 APP_SOURCE_COMMIT="${APP_SOURCE_COMMIT:-}"
+ALLOW_ADHOC_SIGNING="${ALLOW_ADHOC_SIGNING:-0}"
+
+# TCC binds grants to the code signing requirement, not just the bundle ID.
+# A different ad-hoc binary has a different requirement. Never silently fall
+# back to ad-hoc signing when a release/development identity is missing.
+if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
+    [[ "$DEVELOPER_ID_APPLICATION" == 'Developer ID Application:'* ]] || { printf 'A Developer ID Application identity is required\n' >&2; exit 1; }
+    SIGNING_MODE=developer-id
+elif [[ "$ALLOW_ADHOC_SIGNING" == 1 ]]; then
+    SIGNING_MODE=ad-hoc
+    printf 'PREVIEW ONLY: ad-hoc updates can invalidate existing macOS privacy grants.\n' >&2
+else
+    printf 'No Developer ID identity provided. Set DEVELOPER_ID_APPLICATION for stable signing.\nFor an explicitly disposable preview only, set ALLOW_ADHOC_SIGNING=1.\n' >&2
+    exit 1
+fi
 
 [[ "$CONFIGURATION" == debug || "$CONFIGURATION" == release ]] || { printf 'Invalid configuration\n' >&2; exit 1; }
 [[ "$APP_BUNDLE_ID" =~ ^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$ ]] || { printf 'Invalid bundle ID\n' >&2; exit 1; }
@@ -42,19 +57,22 @@ cp "$ROOT/packaging/Info.plist" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $APP_BUNDLE_ID" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :AppSweepSigningMode string $SIGNING_MODE" "$APP/Contents/Info.plist"
 if [[ -n "$APP_SOURCE_COMMIT" ]]; then
     /usr/libexec/PlistBuddy -c "Add :AppSweepSourceCommit string $APP_SOURCE_COMMIT" "$APP/Contents/Info.plist"
 fi
 swift "$ROOT/scripts/make-icon.swift" "$STAGE/AppIcon.iconset"
 iconutil -c icns "$STAGE/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
-    [[ "$DEVELOPER_ID_APPLICATION" == 'Developer ID Application:'* ]] || { printf 'A Developer ID Application identity is required\n' >&2; exit 1; }
     codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP"
 else
     codesign --force --sign - --timestamp=none "$APP"
 fi
 codesign --verify --strict --verbose=2 "$APP"
 plutil -lint "$APP/Contents/Info.plist"
+if [[ -n "${PREVIOUS_APP:-}" ]]; then
+    bash "$ROOT/scripts/check-signing-continuity.sh" "$PREVIOUS_APP" "$APP"
+fi
 if [[ -e "$OUT_DIR/AppSweep.app" ]]; then
     mv "$OUT_DIR/AppSweep.app" "$STAGE/previous-build.app"
 fi
