@@ -138,12 +138,12 @@ The build script can target Apple Silicon (`arm64`) and Intel (`x86_64`). Intel 
 git clone https://github.com/zealerFT/AppSweep.git
 cd AppSweep
 swift run AppSweepSafetyChecks
-ALLOW_ADHOC_SIGNING=1 bash scripts/build.sh
+bash scripts/build.sh
 open dist/AppSweep.app
 bash scripts/dmg.sh
 ```
 
-`scripts/build.sh` requires `DEVELOPER_ID_APPLICATION` unless a disposable preview is explicitly requested with `ALLOW_ADHOC_SIGNING=1`. An ad-hoc preview is not notarized and privacy grants may not survive an update. Output is written to the Git-ignored `dist/` folder. Set `PREVIOUS_APP` to the existing bundle when building an update; the build then refuses a candidate that does not match its signing requirement. It does not replace or launch the installed app.
+`scripts/build.sh` works without an Apple account. It creates one private local signing identity under `~/Library/Application Support/AppSweep Build/Signing` and reuses it for later builds. Do not delete this folder between updates. The build keychain is locked and removed from the keychain search list after signing; system trust settings are not changed. Output goes to the Git-ignored `dist/` folder. Updates in the same output folder are checked against the previous signing identity; use `PREVIOUS_APP` to check another existing bundle. The script does not replace or launch the installed app. Switching from an old ad-hoc build to this local identity can require a one-time renewal of macOS privacy grants. Local builds are not notarized; `ALLOW_ADHOC_SIGNING=1` remains available for disposable previews.
 
 To run the isolated UI smoke test:
 

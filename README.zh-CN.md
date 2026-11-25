@@ -134,12 +134,12 @@ AppSweep 在本机运行，没有账号、分析、广告、网络客户端、�
 git clone https://github.com/zealerFT/AppSweep.git
 cd AppSweep
 swift run AppSweepSafetyChecks
-ALLOW_ADHOC_SIGNING=1 bash scripts/build.sh
+bash scripts/build.sh
 open dist/AppSweep.app
 bash scripts/dmg.sh
 ```
 
-`scripts/build.sh` 默认要求 `DEVELOPER_ID_APPLICATION`，仅在明确设置 `ALLOW_ADHOC_SIGNING=1` 时生成临时签名测试包。这类包未公证，更新可能使旧隐私授权失效。产物放在 Git 忽略的 `dist/`。构建更新时将 `PREVIOUS_APP` 指向旧应用；新包不满足旧签名要求时会中止。脚本不会替换或启动已安装的 App。
+`scripts/build.sh` 不需要 Apple 开发者账号。首次构建会在 `~/Library/Application Support/AppSweep Build/Signing` 创建私有的本地签名身份，后续构建复用它，不要在更新间删除该目录。签名结束后会锁定构建钥匙串并移除临时搜索项，不修改系统证书信任设置。产物放在 Git 忽略的 `dist/`，同一输出目录的更新会自动核对签名身份；也可用 `PREVIOUS_APP` 指定另一个旧应用。脚本不会替换或启动已安装的 App。从旧临时签名首次切换到本地固定签名时，macOS 可能需要重新确认一次隐私授权。本地构建未公证；一次性预览仍可显式设置 `ALLOW_ADHOC_SIGNING=1`。
 
 运行隔离 UI QA：
 

@@ -14,7 +14,7 @@ Updated: 2026-09-11. Scope: local development only.
 
 ```bash
 swift run AppSweepSafetyChecks
-ALLOW_ADHOC_SIGNING=1 bash scripts/build.sh
+bash scripts/build.sh
 open dist/AppSweep.app
 bash scripts/dmg.sh
 ```
@@ -31,12 +31,16 @@ removed by each script's EXIT trap.
 | APP_BUNDLE_ID | User-owned stable reverse-DNS identifier | No |
 | APP_VERSION / BUILD_NUMBER | Optional override; defaults to VERSION / 1 | No |
 | DEVELOPER_ID_APPLICATION | Installed Developer ID identity name | No; associated private key remains in Keychain |
+| LOCAL_SIGNING_DIR | Optional local signer directory; defaults outside the repository and persists across builds | Contains private signing state; never commit or upload |
 | ALLOW_ADHOC_SIGNING | Explicitly set to 1 for a disposable preview; updates can invalidate grants | No |
 | PREVIOUS_APP | Existing app to check signing continuity against before output replacement | No |
 | NOTARY_PROFILE | Existing notarytool Keychain profile name | No; credentials remain in Keychain |
 | OUT_DIR | Optional generated output directory | No |
 
-Do not enumerate/export private keys or write signing credentials into files.
+Local builds create their own private self-signed identity in a dedicated,
+locked build keychain. The generated unlock secret is stored owner-only beside
+it. No existing keys are exported, and system trust settings are not modified.
+Do not commit or upload this directory, or delete it between updates.
 Do not disable Gatekeeper/SIP, reset TCC, grant permissions with scripts, or
 install privileged helpers. Do not run real uninstalls as development probes.
 

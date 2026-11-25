@@ -13,11 +13,15 @@
 - Record optional error kind/domain/code and underlying domain/code pairs,
   retaining compatibility with existing history. Do not infer a specific missing
   privacy permission from a generic denial. Keep cancellation text and Finder links.
-- Ad-hoc code identity changes with updates; stable production authorization
-  still requires a distributor-controlled Developer ID signing identity.
+- Ad-hoc code identity changes with updates. Personal builds use a persistent
+  local self-signed identity; an Apple account is not required. Developer ID
+  remains an option for notarized distribution.
 - Default builds must not silently fall back to ad-hoc signing. The explicit
   preview flag acknowledges that limitation; PREVIOUS_APP enables a check of
   the candidate against the old signing requirement before replacing output.
+- Local identity state lives outside the repository and survives build cleanup.
+  Incomplete state is rejected, not regenerated. The build keychain is temporarily
+  discoverable during signing and then locked; trust settings are not changed.
 - Validation: app-denial/cancellation/reinstall regressions, wrapped errors,
   legacy history decoding, native failure layouts and one reversible disposable
   fixture through the real system recycle API.

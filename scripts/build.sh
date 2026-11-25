@@ -11,9 +11,9 @@ BUILD_NUMBER="${BUILD_NUMBER:-1}"
 APP_SOURCE_COMMIT="${APP_SOURCE_COMMIT:-}"
 ALLOW_ADHOC_SIGNING="${ALLOW_ADHOC_SIGNING:-0}"
 
-# TCC binds grants to the code signing requirement, not just the bundle ID.
-# A different ad-hoc binary has a different requirement. Never silently fall
-# back to ad-hoc signing when a release/development identity is missing.
+# A local, persistent identity is enough for personal use. Developer ID is
+# optional and reserved for notarized distribution. Never silently create a
+# different ad-hoc identity for each local update.
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
     [[ "$DEVELOPER_ID_APPLICATION" == 'Developer ID Application:'* ]] || { printf 'A Developer ID Application identity is required\n' >&2; exit 1; }
     SIGNING_MODE=developer-id
@@ -21,8 +21,7 @@ elif [[ "$ALLOW_ADHOC_SIGNING" == 1 ]]; then
     SIGNING_MODE=ad-hoc
     printf 'PREVIEW ONLY: ad-hoc updates can invalidate existing macOS privacy grants.\n' >&2
 else
-    printf 'No Developer ID identity provided. Set DEVELOPER_ID_APPLICATION for stable signing.\nFor an explicitly disposable preview only, set ALLOW_ADHOC_SIGNING=1.\n' >&2
-    exit 1
+    SIGNING_MODE=local
 fi
 
 [[ "$CONFIGURATION" == debug || "$CONFIGURATION" == release ]] || { printf 'Invalid configuration\n' >&2; exit 1; }
@@ -63,21 +62,27 @@ if [[ -n "$APP_SOURCE_COMMIT" ]]; then
 fi
 swift "$ROOT/scripts/make-icon.swift" "$STAGE/AppIcon.iconset"
 iconutil -c icns "$STAGE/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
-if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
+if [[ "$SIGNING_MODE" == developer-id ]]; then
     codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP"
-else
+elif [[ "$SIGNING_MODE" == ad-hoc ]]; then
     codesign --force --sign - --timestamp=none "$APP"
+else
+    python3 "$ROOT/scripts/local-sign.py" "$APP"
 fi
 codesign --verify --strict --verbose=2 "$APP"
 plutil -lint "$APP/Contents/Info.plist"
 if [[ -n "${PREVIOUS_APP:-}" ]]; then
     bash "$ROOT/scripts/check-signing-continuity.sh" "$PREVIOUS_APP" "$APP"
+elif [[ "$SIGNING_MODE" == local && -d "$OUT_DIR/AppSweep.app" ]]; then
+    bash "$ROOT/scripts/check-signing-continuity.sh" "$OUT_DIR/AppSweep.app" "$APP"
 fi
 if [[ -e "$OUT_DIR/AppSweep.app" ]]; then
     mv "$OUT_DIR/AppSweep.app" "$STAGE/previous-build.app"
 fi
 mv "$APP" "$OUT_DIR/AppSweep.app"
 printf '\nBuilt: %s/AppSweep.app\n' "$OUT_DIR"
-if [[ -z "${DEVELOPER_ID_APPLICATION:-}" ]]; then
-    printf 'LOCAL TEST BUILD: ad-hoc signed, not notarized, not a production release.\n'
+if [[ "$SIGNING_MODE" == local ]]; then
+    printf 'LOCAL BUILD: persistent local signature; no paid Apple account needed. Not notarized.\n'
+elif [[ "$SIGNING_MODE" == ad-hoc ]]; then
+    printf 'PREVIEW BUILD: ad-hoc signed; updates may invalidate existing privacy grants. Not notarized.\n'
 fi
