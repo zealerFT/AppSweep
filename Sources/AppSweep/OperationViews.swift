@@ -77,6 +77,9 @@ struct ConfirmationView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.frame(maxHeight: 220)
             Text(L("Trash space notice")).font(.caption).foregroundStyle(.secondary)
+            if items.contains(where: { $0.kind == .application }) {
+                Text(L("Finder removal notice")).font(.caption).foregroundStyle(.secondary)
+            }
             if hasScanIssues {
                 Label(L("Incomplete scan notice"), systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
@@ -114,22 +117,12 @@ struct PermissionsView: View {
                     openPrivacySettings("Privacy_AllFiles")
                 } label: { Label(L("Open System Settings"), systemImage: "arrow.up.forward.app") }
             }
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L("App Management")).font(.headline)
-                    Text(L("App management explanation")).font(.callout).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button { openPrivacySettings("Privacy_AppBundles") } label: {
-                    Label(L("Open System Settings"), systemImage: "arrow.up.forward.app")
-                }
-            }
             if Bundle.main.object(forInfoDictionaryKey: "AppSweepSigningMode") as? String == "ad-hoc" {
                 Text(L("Permission after update notice")).font(.caption).foregroundStyle(.secondary)
             }
             Divider()
             LabeledContent(L("Scan scope"), value: L("Current user Library"))
-            LabeledContent(L("Administrator privileges"), value: L("Not requested"))
+            LabeledContent(L("Administrator privileges"), value: L("Confirmed by macOS when needed"))
             LabeledContent(L("Network access"), value: L("Not used"))
             Text(L("Permission scope notice")).font(.caption).foregroundStyle(.secondary)
             if !issues.isEmpty { ScanIssuesView(issues: issues) }
@@ -267,11 +260,12 @@ private struct OperationFailureView: View {
     private var url: URL { URL(fileURLWithPath: entry.originalPath) }
     private var isApplication: Bool { url.pathExtension.lowercased() == "app" }
     private var explanation: String {
+        if entry.failure?.isFinderAuthorizationDenied == true { return L("Finder permission failure") }
         switch entry.failure?.kind {
-        case .cancelled: L("Removal cancelled explanation")
+        case .cancelled: return L("Removal cancelled explanation")
         case .permissionDenied:
-            L(isApplication ? "Application permission failure" : "Data permission failure")
-        default: L("Removal failure explanation")
+            return L(isApplication ? "Application permission failure" : "Data permission failure")
+        default: return L("Removal failure explanation")
         }
     }
 
@@ -281,6 +275,9 @@ private struct OperationFailureView: View {
                 .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if entry.failure?.kind != .cancelled {
                 HStack {
+                    if entry.failure?.isFinderAuthorizationDenied == true {
+                        Button(L("Open System Settings")) { openPrivacySettings("Privacy_Automation") }
+                    }
                     Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                         .disabled(!FileManager.default.fileExists(atPath: entry.originalPath))
                 }.controlSize(.small)

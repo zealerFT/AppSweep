@@ -6,11 +6,46 @@ public protocol TrashMoving: Sendable {
 }
 
 public struct SystemTrash: TrashMoving {
+    private let direct: any TrashMoving
+    private let applicationFallback: any TrashMoving
+
+    public init(direct: any TrashMoving = WorkspaceTrash(),
+                applicationFallback: any TrashMoving = FinderTrash()) {
+        self.direct = direct
+        self.applicationFallback = applicationFallback
+    }
+
+    public func moveToTrash(_ url: URL) async throws -> URL? {
+        guard FileSafety.hasNoSymlinkComponents(url),
+              let identity = try FileIdentity.read(url) else { throw SweepError.selectionChanged }
+        let destination: URL?
+        do {
+            destination = try await direct.moveToTrash(url)
+        } catch {
+            // Recycle does not authenticate or delegate to Finder. Only retry
+            // an unchanged application after an actual permission denial.
+            guard RemovalFailure(error).kind == .permissionDenied,
+                  url.pathExtension.lowercased() == "app", identity.isDirectory else { throw error }
+            try Task.checkCancellation()
+            guard FileSafety.hasNoSymlinkComponents(url),
+                  try FileIdentity.read(url) == identity else { throw SweepError.selectionChanged }
+            // Propagate Finder's error (including cancellation or Automation
+            // denial), rather than masking it with the original 513.
+            destination = try await applicationFallback.moveToTrash(url)
+        }
+        // A successful callback alone is not proof of removal. Do not let
+        // later data removal run until the original is gone and the returned
+        // item is the same file, on the same volume, at a non-symlink path.
+        guard let destination, FileSafety.hasNoSymlinkComponents(destination),
+              try FileIdentity.read(url) == nil,
+              try FileIdentity.read(destination) == identity else { throw SweepError.selectionChanged }
+        return destination
+    }
+}
+
+public struct WorkspaceTrash: TrashMoving {
     public init() {}
     @MainActor public func moveToTrash(_ url: URL) async throws -> URL? {
-        // AppKit may display progress UI, but recycle is not a privilege
-        // escalation API. Do not treat a denial as proof that a particular
-        // privacy permission is missing or promise an authentication prompt.
         try await withCheckedThrowingContinuation { continuation in
             NSWorkspace.shared.recycle([url]) { destinations, error in
                 if let destination = destinations[url] {

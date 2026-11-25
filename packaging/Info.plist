@@ -5,7 +5,7 @@
     <key>CFBundleName</key><string>AppSweep</string>
     <key>CFBundleDisplayName</key><string>AppSweep</string>
     <key>CFBundleExecutable</key><string>AppSweep</string>
-    <key>CFBundleIdentifier</key><string>com.example.AppSweep</string>
+    <key>CFBundleIdentifier</key><string>io.github.zealerft.AppSweep</string>
     <key>CFBundleShortVersionString</key><string>0.2.1</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>CFBundlePackageType</key><string>APPL</string>
@@ -16,6 +16,7 @@
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSAppleEventsUsageDescription</key><string>AppSweep uses Finder to move the application you selected to Trash when a direct move is denied. You can cancel the operation.</string>
     <key>NSHumanReadableCopyright</key><string>AppSweep. All rights reserved.</string>
 </dict>
 </plist>

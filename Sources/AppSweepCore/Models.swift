@@ -113,6 +113,13 @@ public struct RemovalFailure: Codable, Sendable {
     // Only error codes are stored, never arbitrary NSError.userInfo contents.
     public let underlyingErrors: [SystemError]?
 
+    // Derive the specific action from the system code without changing the
+    // persisted kind values understood by previous builds.
+    public var isFinderAuthorizationDenied: Bool {
+        kind != .cancelled && ((domain == NSOSStatusErrorDomain && code == -1743)
+            || (underlyingErrors ?? []).contains { $0.domain == NSOSStatusErrorDomain && $0.code == -1743 })
+    }
+
     public init(_ error: Error) {
         let original = error as NSError
         domain = original.domain
@@ -132,7 +139,7 @@ public struct RemovalFailure: Codable, Sendable {
             if (current.domain == NSCocoaErrorDomain && [CocoaError.fileWriteNoPermission.rawValue,
                                                        CocoaError.fileReadNoPermission.rawValue].contains(current.code))
                 || (current.domain == NSPOSIXErrorDomain && [Int(EACCES), Int(EPERM)].contains(current.code))
-                || (current.domain == NSOSStatusErrorDomain && [-54, -5000].contains(current.code)) {
+                || (current.domain == NSOSStatusErrorDomain && [-54, -5000, -1743, -10004].contains(current.code)) {
                 classified = .permissionDenied
             }
             guard let underlying = current.userInfo[NSUnderlyingErrorKey] as? NSError else { break }

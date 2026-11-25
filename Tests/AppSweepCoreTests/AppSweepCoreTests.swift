@@ -315,6 +315,130 @@ final class AppSweepCoreTests: @unchecked Sendable {
         expectTrue(FileManager.default.fileExists(atPath: try requireValue(record.entries.first?.trashPath)))
     }
 
+    @MainActor func testFinderRequestPassesPathsAsData() throws {
+        // Execute only an in-process echo handler. No Finder event, UI,
+        // authorization request, shell command or file operation is sent.
+        let echo = try requireValue(NSAppleScript(source: """
+        on trashApplication(applicationPath)
+            return applicationPath
+        end trashApplication
+        """))
+        let url = URL(fileURLWithPath: "/Applications/Example \"quoted\" \\ line\n中文 $(false) `false`.app")
+        var error: NSDictionary?
+        let reply = echo.executeAppleEvent(FinderTrash.request(for: url), error: &error)
+        expectNil(error)
+        expectEqual(reply.stringValue, url.path)
+    }
+
+    func testSystemTrashRetriesDeniedApplicationThroughFallback() async throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app("Example \"quoted\" application")
+        let data = try f.file("Caches/org.example.Notebook/data").deletingLastPathComponent()
+        let mover = FixtureTrash(root: f.root.appendingPathComponent("Trash"), failingPath: nil)
+        let direct = RecordingTrash { url in
+            if url == app.url { throw CocoaError(.fileWriteNoPermission) }
+            return try mover.moveToTrash(url)
+        }
+        let fallback = RecordingTrash { try mover.moveToTrash($0) }
+        let service = RemovalService(context: f.context, history: HistoryStore(url: f.historyURL),
+                                     trash: SystemTrash(direct: direct, applicationFallback: fallback))
+        let record = try await service.remove(report: f.scan(app), selectedIDs: [app.id, data.path], isRunning: { _ in false })
+        expectTrue(record.succeeded)
+        let calls = await fallback.paths
+        expectEqual(calls, [app.url.path])
+        expectEqual(record.entries.map(\.status), [.trashed, .trashed])
+        expectEqual(try FileIdentity.read(URL(fileURLWithPath: requireValue(record.entries.first?.trashPath))), app.identity)
+    }
+
+    func testSystemTrashDoesNotRetrySuccessCancellationOrDataDenial() async throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        let data = try f.file("Caches/org.example.Notebook/data")
+        let fallback = RecordingTrash { _ in throw CocoaError(.fileWriteUnknown) }
+        let direct = FixtureTrash(root: f.root.appendingPathComponent("Trash"), failingPath: nil)
+        _ = try await SystemTrash(direct: direct, applicationFallback: fallback).moveToTrash(app.url)
+        for error in [CocoaError(.userCancelled), CocoaError(.fileWriteUnknown)] {
+            let nextApp = try f.app(UUID().uuidString)
+            do {
+                _ = try await SystemTrash(direct: RecordingTrash { _ in throw error },
+                                          applicationFallback: fallback).moveToTrash(nextApp.url)
+                fail("Expected original error")
+            } catch let caught as CocoaError { expectEqual(caught.code, error.code) }
+        }
+        do {
+            _ = try await SystemTrash(direct: RecordingTrash { _ in throw CocoaError(.fileWriteNoPermission) },
+                                      applicationFallback: fallback).moveToTrash(data)
+            fail("Data must not be sent to Finder")
+        } catch { expectEqual(RemovalFailure(error).kind, .permissionDenied) }
+        let calls = await fallback.paths
+        expectTrue(calls.isEmpty)
+        expectTrue(FileManager.default.fileExists(atPath: data.path))
+    }
+
+    func testFallbackCancellationAndDenialPreserveApplicationAndData() async throws {
+        for (code, kind) in [(-128, RemovalFailure.Kind.cancelled), (-1743, .permissionDenied), (-54, .permissionDenied)] {
+            let f = try Fixture(); defer { f.clean() }
+            let app = try f.app()
+            let data = try f.file("Application Support/org.example.Notebook/document").deletingLastPathComponent()
+            let direct = RecordingTrash { _ in throw CocoaError(.fileWriteNoPermission) }
+            let fallback = RecordingTrash { _ in throw NSError(domain: NSOSStatusErrorDomain, code: code) }
+            let service = RemovalService(context: f.context, history: HistoryStore(url: f.historyURL),
+                                         trash: SystemTrash(direct: direct, applicationFallback: fallback))
+            let record = try await service.remove(report: f.scan(app), selectedIDs: [app.id, data.path], isRunning: { _ in false })
+            expectEqual(record.entries.map(\.status), [.failed, .skipped])
+            expectEqual(record.entries.first?.failure?.kind, kind)
+            expectEqual(record.entries.first?.failure?.code, code)
+            expectEqual(record.entries.first?.failure?.isFinderAuthorizationDenied, code == -1743)
+            expectTrue(FileManager.default.fileExists(atPath: app.url.path))
+            expectTrue(FileManager.default.fileExists(atPath: data.path))
+            let calls = await fallback.paths
+            expectEqual(calls, [app.url.path])
+        }
+    }
+
+    func testSystemTrashRevalidatesBeforeFallback() async throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        let original = f.root.appendingPathComponent("original.app")
+        let direct = RecordingTrash { url in
+            try FileManager.default.moveItem(at: url, to: original)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+            throw CocoaError(.fileWriteNoPermission)
+        }
+        let fallback = RecordingTrash { _ in throw CocoaError(.fileWriteUnknown) }
+        do {
+            _ = try await SystemTrash(direct: direct, applicationFallback: fallback).moveToTrash(app.url)
+            fail("A replaced application must not reach Finder")
+        } catch SweepError.selectionChanged { }
+        let calls = await fallback.paths
+        expectTrue(calls.isEmpty)
+        expectTrue(FileManager.default.fileExists(atPath: app.url.path))
+    }
+
+    func testUnverifiedFallbackSuccessNeverRemovesData() async throws {
+        for response in 0..<3 {
+            let f = try Fixture(); defer { f.clean() }
+            let app = try f.app()
+            let data = try f.file("Caches/org.example.Notebook/data").deletingLastPathComponent()
+            let unrelated = try f.file("unrelated")
+            let fallback = RecordingTrash { url in
+                switch response {
+                case 0: return nil
+                case 1: return url // Caller says success, but the app is still installed.
+                default:
+                    _ = try FixtureTrash(root: f.root.appendingPathComponent("Trash"), failingPath: nil).moveToTrash(url)
+                    return unrelated // It is not the application we selected.
+                }
+            }
+            let service = RemovalService(context: f.context, history: HistoryStore(url: f.historyURL),
+                                         trash: SystemTrash(direct: RecordingTrash { _ in throw CocoaError(.fileWriteNoPermission) },
+                                                            applicationFallback: fallback))
+            let record = try await service.remove(report: f.scan(app), selectedIDs: [app.id, data.path], isRunning: { _ in false })
+            expectEqual(record.entries.map(\.status), [.failed, .skipped])
+            expectTrue(FileManager.default.fileExists(atPath: data.path))
+        }
+    }
+
     func testFailureClassificationAndLegacyHistoryCompatibility() throws {
         let wrapped = NSError(domain: NSCocoaErrorDomain, code: CocoaError.fileWriteUnknown.rawValue,
                               userInfo: [NSUnderlyingErrorKey: POSIXError(.EACCES)])
@@ -329,6 +453,10 @@ final class AppSweepCoreTests: @unchecked Sendable {
         let oldFailure = Data(#"{"kind":"permissionDenied","domain":"NSCocoaErrorDomain","code":513}"#.utf8)
         expectNil(try JSONDecoder().decode(RemovalFailure.self, from: oldFailure).underlyingErrors)
         expectEqual(RemovalFailure(NSError(domain: NSOSStatusErrorDomain, code: -128)).kind, .cancelled)
+        expectEqual(RemovalFailure(NSError(domain: NSOSStatusErrorDomain, code: -1743)).kind, .permissionDenied)
+        let automation = NSError(domain: NSOSStatusErrorDomain, code: -1743,
+                                 userInfo: [NSUnderlyingErrorKey: CocoaError(.fileWriteNoPermission)])
+        expectTrue(RemovalFailure(automation).isFinderAuthorizationDenied)
         expectEqual(RemovalFailure(CocoaError(.fileNoSuchFile)).kind, .other)
         let old = Data(#"{"originalPath":"/Applications/Example.app","status":"failed","error":"legacy message"}"#.utf8)
         let entry = try JSONDecoder().decode(OperationEntry.self, from: old)
@@ -489,5 +617,15 @@ private struct ReinstallingTrash: TrashMoving {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
         }
         return result
+    }
+}
+
+private actor RecordingTrash: TrashMoving {
+    private(set) var paths: [String] = []
+    let action: @Sendable (URL) throws -> URL?
+    init(_ action: @escaping @Sendable (URL) throws -> URL?) { self.action = action }
+    func moveToTrash(_ url: URL) throws -> URL? {
+        paths.append(url.path)
+        return try action(url)
     }
 }

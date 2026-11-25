@@ -53,6 +53,10 @@ else
 fi
 ditto "$RESOURCE_SOURCE" "$APP/Contents/Resources/AppSweep_AppSweep.bundle"
 cp "$ROOT/packaging/Info.plist" "$APP/Contents/Info.plist"
+for language in en zh-Hans; do
+    mkdir -p "$APP/Contents/Resources/$language.lproj"
+    cp "$ROOT/packaging/$language.lproj/InfoPlist.strings" "$APP/Contents/Resources/$language.lproj/InfoPlist.strings"
+done
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $APP_BUNDLE_ID" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
@@ -63,7 +67,8 @@ fi
 swift "$ROOT/scripts/make-icon.swift" "$STAGE/AppIcon.iconset"
 iconutil -c icns "$STAGE/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
 if [[ "$SIGNING_MODE" == developer-id ]]; then
-    codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP"
+    codesign --force --options runtime --entitlements "$ROOT/packaging/AppSweep.entitlements" \
+        --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP"
 elif [[ "$SIGNING_MODE" == ad-hoc ]]; then
     codesign --force --sign - --timestamp=none "$APP"
 else

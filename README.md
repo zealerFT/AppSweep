@@ -90,7 +90,7 @@ To scan protected locations in the current user's Library:
 3. In **Privacy & Security → Full Disk Access**, add the `AppSweep.app` that you are currently running and enable it.
 4. Relaunch AppSweep if macOS requests it, then choose **Rescan now**.
 
-AppSweep uses macOS's recycle API, which does not guarantee administrator authentication. A generic permission error cannot identify a specific missing grant; the result provides system error details and **Show in Finder**. With ad-hoc updates, an old grant may no longer match the new program. Keeping the Bundle ID unchanged does not resolve that mismatch.
+The unreleased 0.2.1 build asks Finder to move an app to Trash if direct recycling is denied. macOS handles permission to use Finder and any administrator confirmation; cancelling leaves subsequent selected data in place. This flow is awaiting verification with an installed app and is not in the published 0.2.0 download. With ad-hoc updates, an old grant may no longer match the new program. Keeping the Bundle ID unchanged does not resolve that mismatch.
 
 When the app itself is selected, it is moved first. If macOS refuses or the user cancels, the selected associated data stays in place. Errors and skipped items remain visible in the result and History.
 

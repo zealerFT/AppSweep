@@ -84,11 +84,12 @@
 "Cancel" = "Cancel";
 "OK" = "OK";
 "Full Disk Access" = "Full Disk Access";
-"App Management" = "App Management";
-"App management explanation" = "macOS can separately restrict apps from updating or deleting other apps. Authorization is managed by the system.";
 "Handled by macOS" = "Confirmed by macOS as needed";
 "Permission after update notice" = "Quit and reopen AppSweep after granting access. If an update leaves an enabled switch but access is still denied, remove the old entry and add the current AppSweep from Applications. Ad-hoc signed builds may lose authorization after an update.";
-"Application permission failure" = "macOS refused to move this app to Trash. This error alone cannot distinguish outdated authorization, file permissions or system protection; it does not establish that App Management permission is missing. Subsequent selected data was left in place. Technical Details contains the system errors.";
+"Application permission failure" = "The system could not move this app to Trash. Removal stopped and subsequent selected data was left in place. You can inspect the app in Finder; Technical Details contains the system errors from this attempt.";
+"Finder removal notice" = "Finder will move the app to Trash if needed. macOS may ask you to allow Finder operations or confirm with an administrator. Cancelling leaves subsequent selected data in place.";
+"Finder permission failure" = "macOS did not allow AppSweep to move the app through Finder. Removal stopped and subsequent selected data was left in place. To continue, allow AppSweep to use Finder in System Settings → Privacy & Security → Automation.";
+"Confirmed by macOS when needed" = "Confirmed by macOS when needed";
 "Data permission failure" = "macOS refused to move this data item to Trash. This error alone does not identify the permission or protection responsible. Subsequent items were left in place. Technical Details contains the system errors; locate any items already moved through History.";
 "Removal cancelled explanation" = "The system Trash operation was cancelled. Subsequent items were left in place. Locate any items already moved through History.";
 "Removal failure explanation" = "macOS could not recycle this item, so subsequent items were not processed. Inspect it in Finder or expand Technical Details for the system error.";
