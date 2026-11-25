@@ -97,6 +97,41 @@ public struct OperationEntry: Identifiable, Codable, Sendable {
     public var trashPath: String?
     public var status: EntryStatus
     public var error: String?
+    public var failure: RemovalFailure?
+}
+
+public struct RemovalFailure: Codable, Sendable {
+    public enum Kind: String, Codable, Sendable { case permissionDenied, cancelled, other }
+    public let kind: Kind
+    public let domain: String
+    public let code: Int
+
+    public init(_ error: Error) {
+        let original = error as NSError
+        domain = original.domain
+        code = original.code
+        var current = original
+        var classified = Kind.other
+        // Preserve a small, non-sensitive diagnostic instead of serializing
+        // NSError.userInfo. Permission failures are often wrapped by Cocoa.
+        for _ in 0..<8 {
+            if (current.domain == NSCocoaErrorDomain && current.code == CocoaError.userCancelled.rawValue)
+                || (current.domain == NSOSStatusErrorDomain && current.code == -128)
+                || (current.domain == NSPOSIXErrorDomain && current.code == Int(ECANCELED)) {
+                classified = .cancelled
+                break
+            }
+            if (current.domain == NSCocoaErrorDomain && [CocoaError.fileWriteNoPermission.rawValue,
+                                                       CocoaError.fileReadNoPermission.rawValue].contains(current.code))
+                || (current.domain == NSPOSIXErrorDomain && [Int(EACCES), Int(EPERM)].contains(current.code))
+                || (current.domain == NSOSStatusErrorDomain && [-54, -5000].contains(current.code)) {
+                classified = .permissionDenied
+            }
+            guard let underlying = current.userInfo[NSUnderlyingErrorKey] as? NSError else { break }
+            current = underlying
+        }
+        kind = classified
+    }
 }
 
 public struct OperationRecord: Identifiable, Codable, Sendable {

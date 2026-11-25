@@ -1,5 +1,23 @@
 # Architecture Decisions
 
+## ADR-20261125-001: System Recycle And App-First Removal
+
+- Trigger: an installed app could not be removed after data cleanup despite a
+  Full Disk Access grant; raw Cocoa text provided no useful recovery path.
+- Use the asynchronous `NSWorkspace.recycle` operation and allow macOS to
+  present its own UI. Do not add shell deletion, an elevated helper, or modify
+  TCC/Gatekeeper/SIP settings.
+- Move the selected app before associated data. Refusal/cancellation leaves data
+  intact. Before subsequent moves, verify the same app in Trash and reject a
+  replacement at the original path; retain journal-before-move and fail-stop rules.
+- Record optional error kind/domain/code, retaining compatibility with existing
+  history. Show actionable permission/cancellation text, settings and Finder links.
+- Ad-hoc code identity changes with updates; stable production authorization
+  still requires a distributor-controlled Developer ID signing identity.
+- Validation: app-denial/cancellation/reinstall regressions, wrapped errors,
+  legacy history decoding, native failure layouts and one reversible disposable
+  fixture through the real system recycle API.
+
 ## ADR-20261124-001: Cleanup Prioritization And Remembered Success Prompts
 
 - Status: accepted, within the existing native stack; no external dependency.

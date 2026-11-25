@@ -10,7 +10,7 @@
   <a href="#build-locally"><img src="docs/assets/badges/macos.svg" alt="Requires macOS 13 or later" /></a>
   <a href="#build-locally"><img src="docs/assets/badges/architectures.svg" alt="Build targets: arm64 and x86_64" /></a>
   <a href="Package.swift"><img src="docs/assets/badges/interface.svg" alt="Native SwiftUI and AppKit interface" /></a>
-  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="Version 0.2.0 prerelease" /></a>
+  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="Version 0.2.1 prerelease" /></a>
 </p>
 
 <p align="center">
@@ -20,9 +20,9 @@
 <p align="center"><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
-  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg">Download for macOS — v0.2.0 preview</a></strong><br />
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg">Download for macOS — v0.2.1 preview</a></strong><br />
   macOS 13+ · Apple Silicon &amp; Intel · No compilation required<br />
-  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0">Release notes and checksums</a>
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1">Release notes and checksums</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@ AppSweep is a native macOS application cleanup utility. It finds associated cach
 
 Built with **SwiftUI and AppKit**, with no third-party package dependencies. AppSweep works **offline**, with Chinese and English interfaces.
 
-The current version is **0.2.0 prerelease**. It is intended for testing and feedback. It has not yet been validated as a final release on every supported macOS version, Intel Mac, or clean system configuration.
+The current version is **0.2.1 prerelease**. It is intended for testing and feedback. It has not yet been validated as a final release on every supported macOS version, Intel Mac, or clean system configuration.
 
 ## Screenshots
 
@@ -75,11 +75,11 @@ These screenshots use an isolated sample application and fictional paths. They c
 
 ## Install and first use
 
-1. [Download AppSweep-0.2.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
+1. [Download AppSweep-0.2.1-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg). The same installer includes Apple Silicon and Intel binaries for macOS 13 or later.
 2. Open the `.dmg` and drag **AppSweep** to **Applications**.
 3. Launch AppSweep from Applications. No Xcode, terminal commands, or compilation are required.
 
-Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0); **Source code (zip/tar.gz)** is for developers.
+Choose the `.dmg` asset on [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1); **Source code (zip/tar.gz)** is for developers.
 
 **First launch:** this preview is ad-hoc signed, without Apple Developer ID signing or notarization. If macOS cannot verify the developer, confirm that you downloaded it from this repository, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open**. This option normally appears after an attempted launch; managed Macs may prevent it.
 
@@ -90,7 +90,9 @@ To scan protected locations in the current user's Library:
 3. In **Privacy & Security → Full Disk Access**, add the `AppSweep.app` that you are currently running and enable it.
 4. Relaunch AppSweep if macOS requests it, then choose **Rescan now**.
 
-AppSweep does not request administrator privileges. Full Disk Access is managed by macOS and does not remove system protections.
+AppSweep uses macOS's system recycle operation; macOS may display its own confirmation or authentication UI. Full Disk Access does not grant administrator privileges. If an app cannot be removed, check **Privacy & Security → App Management** or use **Show in Finder** from the result. Ad-hoc signed updates can require re-adding the current app to the relevant permission list and relaunching it.
+
+When the app itself is selected, it is moved first. If macOS refuses or the user cancels, the selected associated data stays in place. Errors and skipped items remain visible in the result and History.
 
 The normal cleanup flow is:
 
@@ -167,7 +169,7 @@ For a release with a verified developer identity and notarization, the distribut
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Organization (TEAMID)'
 export APP_BUNDLE_ID='io.github.zealerft.AppSweep'
 export NOTARY_PROFILE='your-keychain-profile-name'
-export APP_VERSION='0.2.0'
+export APP_VERSION='0.2.1'
 bash scripts/release.sh
 ```
 

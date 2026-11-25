@@ -266,7 +266,7 @@ final class AppSweepCoreTests: @unchecked Sendable {
         let document = try f.file("Application Support/org.example.Notebook/document")
         let record = try await f.removal().remove(report: f.scan(app), selectedIDs: [app.id, cache.path], isRunning: { _ in false })
         expectTrue(record.succeeded)
-        expectEqual(record.entries.last?.originalPath, app.id)
+        expectEqual(record.entries.first?.originalPath, app.id)
         expectFalse(FileManager.default.fileExists(atPath: app.url.path))
         expectFalse(FileManager.default.fileExists(atPath: cache.path))
         expectTrue(FileManager.default.fileExists(atPath: document.path))
@@ -276,17 +276,70 @@ final class AppSweepCoreTests: @unchecked Sendable {
         expectEqual(saved.first?.id, record.id)
     }
 
-    func testTrashFailureStopsBeforeMovingAppAndRecordsPartialResult() async throws {
+    func testApplicationDenialLeavesSelectedDataUntouched() async throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        let data = try f.file("Application Support/org.example.Notebook/document").deletingLastPathComponent()
+        let record = try await f.removal(failingPath: app.id).remove(
+            report: f.scan(app), selectedIDs: [app.id, data.path], isRunning: { _ in false })
+        expectEqual(record.entries.map(\.status), [.failed, .skipped])
+        expectEqual(record.entries.first?.failure?.kind, .permissionDenied)
+        expectEqual(record.entries.first?.failure?.domain, NSCocoaErrorDomain)
+        expectEqual(record.entries.first?.failure?.code, CocoaError.fileWriteNoPermission.rawValue)
+        expectTrue(FileManager.default.fileExists(atPath: app.url.path))
+        expectTrue(FileManager.default.fileExists(atPath: data.appendingPathComponent("document").path))
+    }
+
+    func testCancelledApplicationRemovalLeavesSelectedDataUntouched() async throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        let data = try f.file("Containers/org.example.Notebook/document").deletingLastPathComponent()
+        let record = try await f.removal(failingPath: app.id, failingError: CocoaError(.userCancelled)).remove(
+            report: f.scan(app), selectedIDs: [app.id, data.path], isRunning: { _ in false })
+        expectEqual(record.entries.map(\.status), [.failed, .skipped])
+        expectEqual(record.entries.first?.failure?.kind, .cancelled)
+        expectTrue(FileManager.default.fileExists(atPath: app.url.path))
+        expectTrue(FileManager.default.fileExists(atPath: data.path))
+    }
+
+    func testReinstalledApplicationPreventsDataRemovalAfterAppMoved() async throws {
+        let f = try Fixture(); defer { f.clean() }
+        let app = try f.app()
+        let data = try f.file("Caches/org.example.Notebook/data").deletingLastPathComponent()
+        let service = RemovalService(context: f.context, history: HistoryStore(url: f.historyURL),
+                                     trash: ReinstallingTrash(root: f.root.appendingPathComponent("Trash")))
+        let record = try await service.remove(report: f.scan(app), selectedIDs: [app.id, data.path], isRunning: { _ in false })
+        expectEqual(record.entries.map(\.status), [.trashed, .failed])
+        expectTrue(FileManager.default.fileExists(atPath: app.url.path))
+        expectTrue(FileManager.default.fileExists(atPath: data.path))
+        expectTrue(FileManager.default.fileExists(atPath: try requireValue(record.entries.first?.trashPath)))
+    }
+
+    func testFailureClassificationAndLegacyHistoryCompatibility() throws {
+        let wrapped = NSError(domain: NSCocoaErrorDomain, code: CocoaError.fileWriteUnknown.rawValue,
+                              userInfo: [NSUnderlyingErrorKey: POSIXError(.EACCES)])
+        expectEqual(RemovalFailure(wrapped).kind, .permissionDenied)
+        expectEqual(RemovalFailure(NSError(domain: NSOSStatusErrorDomain, code: -128)).kind, .cancelled)
+        expectEqual(RemovalFailure(CocoaError(.fileNoSuchFile)).kind, .other)
+        let old = Data(#"{"originalPath":"/Applications/Example.app","status":"failed","error":"legacy message"}"#.utf8)
+        let entry = try JSONDecoder().decode(OperationEntry.self, from: old)
+        expectNil(entry.failure)
+        expectEqual(entry.error, "legacy message")
+    }
+
+    func testDataFailureStopsRemainingItemsAndRecordsPartialResult() async throws {
         let f = try Fixture(); defer { f.clean() }
         let app = try f.app()
         let cache = try f.file("Caches/org.example.Notebook/data").deletingLastPathComponent()
         let logs = try f.file("Logs/org.example.Notebook/log").deletingLastPathComponent()
+        let preferences = try f.file("Preferences/org.example.Notebook.plist")
         let service = f.removal(failingPath: logs.path)
-        let record = try await service.remove(report: f.scan(app), selectedIDs: [app.id, cache.path, logs.path], isRunning: { _ in false })
+        let record = try await service.remove(report: f.scan(app), selectedIDs: [app.id, cache.path, logs.path, preferences.path], isRunning: { _ in false })
         expectFalse(record.succeeded)
-        expectEqual(record.entries.map(\.status), [.trashed, .failed, .skipped])
-        expectTrue(FileManager.default.fileExists(atPath: app.url.path))
+        expectEqual(record.entries.map(\.status), [.trashed, .trashed, .failed, .skipped])
+        expectFalse(FileManager.default.fileExists(atPath: app.url.path))
         expectTrue(FileManager.default.fileExists(atPath: logs.path))
+        expectTrue(FileManager.default.fileExists(atPath: preferences.path))
         expectFalse(FileManager.default.fileExists(atPath: cache.path))
         let saved = try await HistoryStore(url: f.historyURL).load()
         expectEqual(saved.first?.entries.map(\.status), record.entries.map(\.status))
@@ -398,9 +451,9 @@ private struct Fixture: Sendable {
 
     func scan(_ app: InstalledApp) throws -> ScanReport { try scanner.scan(app, catalog: scanner.catalog()) }
 
-    func removal(failingPath: String? = nil) -> RemovalService {
+    func removal(failingPath: String? = nil, failingError: CocoaError = CocoaError(.fileWriteNoPermission)) -> RemovalService {
         RemovalService(context: context, history: HistoryStore(url: historyURL),
-                       trash: FixtureTrash(root: root.appendingPathComponent("Trash"), failingPath: failingPath))
+                       trash: FixtureTrash(root: root.appendingPathComponent("Trash"), failingPath: failingPath, failingError: failingError))
     }
 
     func clean() { try? FileManager.default.removeItem(at: root) }
@@ -409,11 +462,23 @@ private struct Fixture: Sendable {
 private struct FixtureTrash: TrashMoving {
     let root: URL
     let failingPath: String?
+    var failingError = CocoaError(.fileWriteNoPermission)
     func moveToTrash(_ url: URL) throws -> URL? {
-        if url.path == failingPath { throw CocoaError(.fileWriteNoPermission) }
+        if url.path == failingPath { throw failingError }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let target = root.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
         try FileManager.default.moveItem(at: url, to: target)
         return target
+    }
+}
+
+private struct ReinstallingTrash: TrashMoving {
+    let root: URL
+    func moveToTrash(_ url: URL) throws -> URL? {
+        let result = try FixtureTrash(root: root, failingPath: nil).moveToTrash(url)
+        if url.pathExtension == "app" {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+        }
+        return result
     }
 }

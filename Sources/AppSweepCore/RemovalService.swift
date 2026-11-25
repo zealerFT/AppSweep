@@ -1,15 +1,25 @@
+import AppKit
 import Foundation
 
 public protocol TrashMoving: Sendable {
-    func moveToTrash(_ url: URL) throws -> URL?
+    func moveToTrash(_ url: URL) async throws -> URL?
 }
 
 public struct SystemTrash: TrashMoving {
     public init() {}
-    public func moveToTrash(_ url: URL) throws -> URL? {
-        var result: NSURL?
-        try FileManager.default.trashItem(at: url, resultingItemURL: &result)
-        return result as URL?
+    @MainActor public func moveToTrash(_ url: URL) async throws -> URL? {
+        // Use the system's interactive file operation, which can present its
+        // own confirmation/authorization UI. A plain FileManager operation has
+        // no way to resolve an authorization failure for an installed app.
+        try await withCheckedThrowingContinuation { continuation in
+            NSWorkspace.shared.recycle([url]) { destinations, error in
+                if let destination = destinations[url] {
+                    continuation.resume(returning: destination)
+                } else {
+                    continuation.resume(throwing: error ?? CocoaError(.fileWriteUnknown))
+                }
+            }
+        }
     }
 }
 
@@ -32,7 +42,7 @@ public actor RemovalService {
         defer { busy = false }
         guard !selectedIDs.isEmpty else { throw SweepError.emptySelection }
         let selected = report.candidates.filter { selectedIDs.contains($0.id) }.sorted {
-            if ($0.kind == .application) != ($1.kind == .application) { return $1.kind == .application }
+            if ($0.kind == .application) != ($1.kind == .application) { return $0.kind == .application }
             return $0.id < $1.id
         }
         guard selected.count == selectedIDs.count else { throw SweepError.selectionChanged }
@@ -54,24 +64,39 @@ public actor RemovalService {
         do { try await history.save(record) }
         catch { throw SweepError.historyUnavailable(error.localizedDescription) }
 
-        // Persist intent first; move the app last. Stop on the first failure so a
-        // partial cleanup never gets reported as a complete uninstall.
+        // Resolve app removal before touching user data. If macOS refuses the
+        // app or the user cancels, leave all selected data in place.
+        var trashedApplication: URL?
         for index in selected.indices {
             let item = selected[index]
             do {
                 try Task.checkCancellation()
                 if await isRunning(report.app) { throw SweepError.runningApplication }
                 guard FileSafety.hasNoSymlinkComponents(item.url),
-                      try FileIdentity.read(item.url) == item.identity,
-                      try FileIdentity.read(report.app.url) == report.app.identity else {
+                      try FileIdentity.read(item.url) == item.identity else {
                     throw SweepError.selectionChanged
                 }
-                let result = try trash.moveToTrash(item.url)
+                if let trashedApplication {
+                    // A newly installed app at the old path must not lose its
+                    // data. Also retain the original identity check in Trash.
+                    guard try FileIdentity.read(report.app.url) == nil,
+                          FileSafety.hasNoSymlinkComponents(trashedApplication),
+                          try FileIdentity.read(trashedApplication) == report.app.identity else {
+                        throw SweepError.selectionChanged
+                    }
+                } else {
+                    guard try FileIdentity.read(report.app.url) == report.app.identity else {
+                        throw SweepError.selectionChanged
+                    }
+                }
+                let result = try await trash.moveToTrash(item.url)
                 record.entries[index].trashPath = result?.path
                 record.entries[index].status = .trashed
+                if item.kind == .application { trashedApplication = result }
             } catch {
                 record.entries[index].status = .failed
                 record.entries[index].error = error.localizedDescription
+                record.entries[index].failure = RemovalFailure(error)
                 for remaining in selected.indices where remaining > index {
                     record.entries[remaining].status = .skipped
                 }

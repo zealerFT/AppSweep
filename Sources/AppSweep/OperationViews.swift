@@ -111,14 +111,23 @@ struct PermissionsView: View {
                 }
                 Spacer()
                 Button {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
-                        NSWorkspace.shared.open(url)
-                    }
+                    openPrivacySettings("Privacy_AllFiles")
                 } label: { Label(L("Open System Settings"), systemImage: "arrow.up.forward.app") }
             }
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L("App Management")).font(.headline)
+                    Text(L("App management explanation")).font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button { openPrivacySettings("Privacy_AppBundles") } label: {
+                    Label(L("Open System Settings"), systemImage: "arrow.up.forward.app")
+                }
+            }
+            Text(L("Permission after update notice")).font(.caption).foregroundStyle(.secondary)
             Divider()
             LabeledContent(L("Scan scope"), value: L("Current user Library"))
-            LabeledContent(L("Administrator privileges"), value: L("Not requested"))
+            LabeledContent(L("Administrator privileges"), value: L("Handled by macOS"))
             LabeledContent(L("Network access"), value: L("Not used"))
             Text(L("Permission scope notice")).font(.caption).foregroundStyle(.secondary)
             if !issues.isEmpty { ScanIssuesView(issues: issues) }
@@ -172,7 +181,7 @@ struct HistoryRecordView: View {
                             Text(entry.originalPath).font(.system(size: 11, design: .monospaced))
                                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                             Text(L(entry.status.title)).font(.caption).foregroundStyle(.secondary)
-                            if let error = entry.error { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
+                            if entry.status == .failed { OperationFailureView(entry: entry) }
                         }.frame(maxWidth: .infinity, alignment: .leading)
                         if let path = entry.trashPath {
                             Button { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) } label: {
@@ -218,6 +227,11 @@ struct ResultView: View {
             }
             Text(record.appName).font(.headline)
             Text("\(record.trashedCount) / \(record.entries.count) " + L("moved to Trash"))
+            if let failed = record.entries.first(where: { $0.status == .failed }) {
+                Text(URL(fileURLWithPath: failed.originalPath).lastPathComponent)
+                    .font(.callout).textSelection(.enabled)
+                OperationFailureView(entry: failed)
+            }
             if let error = record.journalError {
                 Text(L("Journal unavailable") + "\n" + error).font(.caption).foregroundStyle(.red).textSelection(.enabled)
                 ForEach(record.entries.filter { $0.status == .trashed }) { entry in
@@ -237,6 +251,54 @@ struct ResultView: View {
                 Button(L("Close"), action: close).keyboardShortcut(.defaultAction)
             }
         }.padding(24).frame(width: 460)
+    }
+}
+
+private func openPrivacySettings(_ pane: String) {
+    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?" + pane) {
+        NSWorkspace.shared.open(url)
+    }
+}
+
+private struct OperationFailureView: View {
+    let entry: OperationEntry
+    private var url: URL { URL(fileURLWithPath: entry.originalPath) }
+    private var isApplication: Bool { url.pathExtension.lowercased() == "app" }
+    private var explanation: String {
+        switch entry.failure?.kind {
+        case .cancelled: L("Removal cancelled explanation")
+        case .permissionDenied:
+            L(isApplication ? "Application permission failure" : "Data permission failure")
+        default: L("Removal failure explanation")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(explanation).font(.caption).foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            if entry.failure?.kind != .cancelled {
+                HStack {
+                    if isApplication {
+                        Button(L("App Management")) { openPrivacySettings("Privacy_AppBundles") }
+                    } else if entry.failure?.kind == .permissionDenied {
+                        Button(L("Full Disk Access")) { openPrivacySettings("Privacy_AllFiles") }
+                    }
+                    Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                        .disabled(!FileManager.default.fileExists(atPath: entry.originalPath))
+                }.controlSize(.small)
+            }
+            if let error = entry.error {
+                DisclosureGroup(L("Technical details")) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(error).textSelection(.enabled)
+                        if let failure = entry.failure {
+                            Text("\(failure.domain) (\(failure.code))").textSelection(.enabled)
+                        }
+                    }.font(.caption).foregroundStyle(.secondary)
+                }.font(.caption)
+            }
+        }
     }
 }
 

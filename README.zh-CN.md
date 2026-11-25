@@ -10,7 +10,7 @@
   <a href="#本地构建"><img src="docs/assets/badges/macos.svg" alt="需要 macOS 13 或更高版本" /></a>
   <a href="#本地构建"><img src="docs/assets/badges/architectures.svg" alt="支持构建 arm64 和 x86_64" /></a>
   <a href="Package.swift"><img src="docs/assets/badges/interface.svg" alt="原生 SwiftUI 和 AppKit 界面" /></a>
-  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="版本 0.2.0 预发布版" /></a>
+  <a href="VERSION"><img src="docs/assets/badges/version.svg" alt="版本 0.2.1 预发布版" /></a>
 </p>
 
 <p align="center">
@@ -20,9 +20,9 @@
 <p align="center"><a href="README.md">English</a> · <strong>简体中文</strong></p>
 
 <p align="center">
-  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg">下载 macOS 安装包 — v0.2.0 预发布版</a></strong><br />
+  <strong><a href="https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg">下载 macOS 安装包 — v0.2.1 预发布版</a></strong><br />
   macOS 13 及以上 · Apple Silicon 与 Intel 通用 · 无需编译<br />
-  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0">更新说明与校验文件</a>
+  <a href="https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1">更新说明与校验文件</a>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ AppSweep 是一款原生 macOS 应用清理工具。它按应用的 Bundle ID �
 
 采用 **SwiftUI 和 AppKit** 开发，无第三方包依赖。应用**离线运行**，提供中文和英文界面。
 
-当前版本是 **0.2.0 预发布版**。它适合测试和反馈，尚未代表已经完成所有 macOS 版本、Intel 设备和干净系统环境验收的正式发行版。
+当前版本是 **0.2.1 预发布版**。它适合测试和反馈，尚未代表已经完成所有 macOS 版本、Intel 设备和干净系统环境验收的正式发行版。
 
 ## 界面预览
 
@@ -76,15 +76,19 @@ AppSweep 是一款原生 macOS 应用清理工具。它按应用的 Bundle ID �
 
 ## 安装和首次使用
 
-1. [下载 AppSweep-0.2.0-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.0/AppSweep-0.2.0-universal.dmg)。一个安装包包含 Apple Silicon 和 Intel 两种架构，要求 macOS 13 或更高版本。
+1. [下载 AppSweep-0.2.1-universal.dmg](https://github.com/zealerFT/AppSweep/releases/download/v0.2.1/AppSweep-0.2.1-universal.dmg)。一个安装包包含 Apple Silicon 和 Intel 两种架构，要求 macOS 13 或更高版本。
 2. 双击打开 `.dmg`，将 **AppSweep** 拖到 **Applications（应用程序）**。
 3. 从“应用程序”文件夹打开 AppSweep，无需安装 Xcode、运行命令或自行编译。
 
-在 [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.0) 页面选择 `.dmg` 即可；**Source code (zip/tar.gz)** 是给开发者使用的源码。
+在 [GitHub Releases](https://github.com/zealerFT/AppSweep/releases/tag/v0.2.1) 页面选择 `.dmg` 即可；**Source code (zip/tar.gz)** 是给开发者使用的源码。
 
 **首次打开提示：** 此预发布版使用 ad-hoc 签名，尚未经过 Apple Developer ID 签名和公证。如果 macOS 提示无法验证开发者，请先确认文件来自本仓库，再打开 **系统设置 → 隐私与安全性 → 仍要打开**，并确认“打开”。该按钮通常在尝试启动后才会出现；受组织管理的 Mac 可能不允许打开。
 
 需要扫描当前用户 Library 中受保护的目录时，在“系统设置 → 隐私与安全性 → 完全磁盘访问权限”中允许 AppSweep。按 macOS 提示重新打开应用后，再点击“立即重新扫描”。
+
+移除应用使用 macOS 的系统回收流程，系统可能显示确认或认证窗口。完全磁盘访问不等于管理员权限；应用移除被拒绝时，请检查“隐私与安全性 → App 管理”，也可从结果窗口选择“在访达中显示”。临时签名版本更新后，可能需要在对应权限列表重新添加当前应用并重启 AppSweep。
+
+选中应用本体时会先移除本体，再处理所选关联数据。本体被拒绝或用户取消时，关联数据保持原样；失败和未处理项目会明确显示。
 
 普通清理流程如下：
 
@@ -161,7 +165,7 @@ swift run AppSweepSafetyChecks
 export DEVELOPER_ID_APPLICATION='Developer ID Application: Your Organization (TEAMID)'
 export APP_BUNDLE_ID='io.github.zealerft.AppSweep'
 export NOTARY_PROFILE='your-keychain-profile-name'
-export APP_VERSION='0.2.0'
+export APP_VERSION='0.2.1'
 bash scripts/release.sh
 ```
 

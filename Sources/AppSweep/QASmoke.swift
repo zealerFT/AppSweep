@@ -149,7 +149,7 @@ enum QASmoke {
             try await pause()
             guard let permissionSheet = window.attachedSheet else { throw QAError.failed("Permissions sheet not presented") }
             try require(permissionSheet.isVisible, "native permission sheet is visible", into: &checks)
-            try render(PermissionsView(issues: [], rescan: {}), size: NSSize(width: 540, height: 390),
+            try render(PermissionsView(issues: [], rescan: {}), size: NSSize(width: 540, height: 560),
                        to: output, name: "permissions.png", names: &screenshots)
             model.showPermissions = false
             try await pause()
@@ -195,10 +195,15 @@ enum QASmoke {
                         "suppressed success still saves complete operation history", into: &checks)
             guard var failed = model.history.first else { throw QAError.failed("Missing second result") }
             failed.entries[0].status = .failed
+            failed.entries[0].trashPath = nil
+            failed.entries[0].error = "Isolated QA permission failure"
+            failed.entries[0].failure = RemovalFailure(CocoaError(.fileWriteNoPermission))
             model.presentResult(failed)
             try await pause()
             try require(model.result?.succeeded == false && window.attachedSheet != nil,
                         "failed cleanup still displays a result when success prompts are disabled", into: &checks)
+            try render(ResultView(record: failed, suppressSuccessDialog: .constant(false), close: {}, viewHistory: {}),
+                       size: NSSize(width: 460, height: 540), to: output, name: "permission-failure.png", names: &screenshots)
             model.dismissResult()
             try await pause()
             var journalFailure = model.history[0]
@@ -215,6 +220,18 @@ enum QASmoke {
                         "history opens only when explicitly requested", into: &checks)
             try await pause()
             try capture(window, to: output, name: "history.png", names: &screenshots)
+            // Exercise the real system recycle callback with one disposable
+            // fixture, then bring it back so no test app is left in Trash.
+            let probe = fixture.appendingPathComponent("SystemRecycleProbe.app")
+            try FileManager.default.createDirectory(at: probe, withIntermediateDirectories: false)
+            let probeIdentity = try FileIdentity.read(probe)
+            guard let destination = try await SystemTrash().moveToTrash(probe) else {
+                throw QAError.failed("System recycle returned no destination")
+            }
+            try require(!FileManager.default.fileExists(atPath: probe.path)
+                        && (try FileIdentity.read(destination)) == probeIdentity,
+                        "system recycle returns the actual Trash destination for a disposable fixture", into: &checks)
+            try FileManager.default.moveItem(at: destination, to: probe)
             let result = QAReport(checks: checks, screenshots: screenshots, failure: nil)
             try JSONEncoder().encode(result).write(to: output.appendingPathComponent("report.json"), options: .atomic)
             print("QA PASS: \(checks.count) workflow checks; \(screenshots.count) nonblank native screenshots; no real applications touched.")

@@ -1,12 +1,12 @@
 # Project Architecture
 
-Updated: 2026-11-24. Native macOS desktop application.
+Updated: 2026-11-25. Native macOS desktop application.
 
 ## Boundaries
 
 | Module | Responsibility | Constraints |
 | --- | --- | --- |
-| AppSweepCore | Catalog, exact-ID scan policy, identity checks, removal journal | No shell deletion, no elevation, no network |
+| AppSweepCore | Catalog, exact-ID scan policy, identity checks, system recycle, removal journal | No shell deletion, privileged helper, or network |
 | AppSweep | SwiftUI/AppKit UI, app icons, running-app checks, permission links | Explicit confirmation before every removal |
 | scripts | Local app/DMG assembly; opt-in signing and notarization | Never alter system security settings |
 | Tests | Isolated temporary app/Library fixtures and fake trash | Never uninstall a user's installed application |
@@ -15,8 +15,11 @@ Updated: 2026-11-24. Native macOS desktop application.
 
 Catalog -> selected app -> immutable scan report -> user selection -> fresh scan
 and identity validation -> persisted operation plan -> per-item Trash operation ->
-per-item persisted result. The application bundle is moved last. Any failure stops
-remaining moves. Partial results stay visible.
+per-item persisted result. The application bundle is moved first so refusal or
+cancellation preserves selected user data. The asynchronous system recycle API
+may present macOS UI. Before moving associated data, verify the app's identity in
+Trash and absence at its original path. Any failure stops remaining moves.
+Partial results stay visible; structured error metadata supplements legacy strings.
 
 ## Safety Policy
 
@@ -24,7 +27,7 @@ remaining moves. Partial results stay visible.
 - Only explicit bundle-ID paths in the current user's Library are candidates.
 - Never infer ownership from a display name or vendor prefix.
 - Personal data and preferences are not selected by default.
-- No shared Group Containers, external volumes, drivers, or privileged deletion.
+- No shared Group Containers, external volumes, drivers, or custom privileged deletion.
 - Duplicate installed bundle IDs block shared data removal.
 - Symlink paths, stale file identities, self-uninstall and Apple bundle IDs are blocked.
 - Embedded services/extensions and positively matched launch jobs require the
@@ -42,7 +45,8 @@ bundle only; last-use dates come from macOS Spotlight, with missing values kept
 unknown. These display/sort values never authorize a removal.
 Sorting and the successful-cleanup dialog preference use local UserDefaults.
 Suppressing success dialogs does not suppress partial failures or journal errors.
-QA uses an isolated defaults suite and fixture-only Trash.
+QA uses an isolated defaults suite and staging Trash, plus one disposable fixture
+to exercise and reverse a real system recycle operation.
 No analytics, backend, cloud sync, auto-update, or privileged helper in this version.
 
 Evidence: Package.swift, Sources/ and the selected standalone-distribution

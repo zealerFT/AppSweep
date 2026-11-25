@@ -1,6 +1,6 @@
 # Test And QA Runbook
 
-Updated: 2026-11-24.
+Updated: 2026-11-25.
 
 ## Safety Tests
 
@@ -8,14 +8,14 @@ Run `swift run AppSweepSafetyChecks`. The executable exits nonzero on any failed
 assertion or unexpected error. Tests use unique, canonicalized temporary roots
 and an injected staging Trash adapter, never the user's real applications.
 
-Verified result: 29 checks, 0 failures on the development macOS / Swift 6 toolchain.
+Verified result: 33 checks, 0 failures on the development macOS / Swift 6 toolchain.
 Includes numeric/date catalog ordering with unknown values last, app-only size
 measurement without following symbolic links, and stale metadata rejection.
 
 Coverage: catalog boundaries, exact bundle IDs, ByHost UUIDs, personal-data defaults,
 duplicate copies, protected apps, traversal, candidate/ancestor symlinks, permission
 errors, embedded services, structured launch jobs, running apps, stale identities,
-late duplicates, case-insensitive bundle identity, selected-only moves, app-last ordering, partial failure, corrupt
+late duplicates, case-insensitive bundle identity, selected-only moves, app-first ordering, app refusal/cancellation preserving data, reinstalls during removal, wrapped errors and legacy history, partial failure, corrupt
 or symlinked journals, and invalid/empty selections.
 
 The first test run exposed Foundation's `/private/var` to `/var` rewriting. Trusted
@@ -33,11 +33,13 @@ QA loads generated app/Library fixtures, drives the real observable model,
 presents native sheets, renders only AppSweep's own content, checks bitmap
 color diversity, and writes `build/qa/report.json` plus images. It does not
 capture other windows, require Screen Recording permission, grant filesystem
-permissions, quit real applications, or use the real system Trash adapter.
+permissions or quit real applications. It also recycles one disposable fixture
+through the real system Trash adapter, checks its identity and returned path,
+then moves it back before removing the test fixture.
 
-Verified result: 27 workflow checks, 7 nonblank images per language. Desktop
+Verified result: 28 workflow checks, 8 nonblank images per language. Desktop
 (1100 x 740), minimum window (880 x 620), dark mode, confirmation, permissions,
-result and history layouts were checked for clipping, overlap and missing text.
+result, permission-failure and history layouts were checked for clipping, overlap and missing text.
 Packaged resource loading is asserted, rather than relying on SwiftPM's absolute
 build-directory fallback. App icons in QA are generic because the fixtures are
 deliberately non-executable; normal mode uses real installed application icons.
@@ -77,6 +79,6 @@ offline installation, real TCC transitions, protected helper removal and
 real-application uninstall/recovery tests have not been authorized or verified.
 The current release does not implement privileged helper removal.
 
-Before broad release, add controlled disposable-VM tests of the system Trash
-adapter and representative supported apps, including failed moves and recovery.
+Before broad release, add controlled disposable-VM tests of root-owned and
+privacy-protected apps, including system authentication, failed moves and recovery.
 Native model-driven QA does not replace accessibility-driven end-to-end clicks.
